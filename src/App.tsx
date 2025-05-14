@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AppLayout from "./components/layout/AppLayout";
@@ -22,6 +22,7 @@ import PaymentsPage from "./pages/PaymentsPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
+import InvoicesPage from "./pages/InvoicesPage";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -43,7 +44,7 @@ const App = () => {
           <BrowserRouter>
             <Routes>
               {/* Public Routes */}
-              <Route path="/" element={<LoginPage />} />
+              <Route path="/" element={<Navigate to="/login" />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
@@ -56,9 +57,14 @@ const App = () => {
                 </ProtectedRoute>
               }>
                 <Route index element={<DashboardPage />} />
-                <Route path="/dashboard/clients" element={<ClientsPage />} />
+                <Route path="/dashboard/clients" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <ClientsPage />
+                  </ProtectedRoute>
+                } />
                 <Route path="/dashboard/tasks" element={<TasksPage />} />
                 <Route path="/dashboard/payments" element={<PaymentsPage />} />
+                <Route path="/dashboard/invoices" element={<InvoicesPage />} />
                 <Route path="/dashboard/notifications" element={<NotificationsPage />} />
                 <Route path="/dashboard/settings" element={<SettingsPage />} />
               </Route>

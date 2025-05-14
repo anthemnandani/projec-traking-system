@@ -38,6 +38,8 @@ import {
 } from '@/components/ui/popover';
 import { CalendarIcon } from 'lucide-react';
 import { Task, TaskStatus } from '@/types';
+import { toast } from '@/hooks/use-toast';
+import { createTaskObject } from './AddTaskDialog.fix';
 
 const taskFormSchema = z.object({
   title: z.string().min(3, { message: 'Title must be at least 3 characters' }).max(100),
@@ -46,6 +48,7 @@ const taskFormSchema = z.object({
   status: z.enum(['requirements', 'quote', 'approved', 'progress', 'submitted', 'feedback', 'complete'] as const),
   estimatedHours: z.coerce.number().positive({ message: 'Hours must be positive' }),
   estimatedCost: z.coerce.number().positive({ message: 'Cost must be positive' }),
+  project: z.string().optional(),
   dueDate: z.date().optional(),
 });
 
@@ -83,6 +86,7 @@ const AddTaskDialog: React.FC<AddTaskDialogProps> = ({
       status: taskToEdit?.status || 'requirements',
       estimatedHours: taskToEdit?.estimatedHours || 0,
       estimatedCost: taskToEdit?.estimatedCost || 0,
+      project: taskToEdit?.project || '',
       dueDate: taskToEdit?.dueDate || undefined,
     },
   });
@@ -96,6 +100,7 @@ const AddTaskDialog: React.FC<AddTaskDialogProps> = ({
         status: taskToEdit.status,
         estimatedHours: taskToEdit.estimatedHours,
         estimatedCost: taskToEdit.estimatedCost,
+        project: taskToEdit.project || '',
         dueDate: taskToEdit.dueDate,
       });
     } else {
@@ -106,28 +111,71 @@ const AddTaskDialog: React.FC<AddTaskDialogProps> = ({
         status: 'requirements',
         estimatedHours: 0,
         estimatedCost: 0,
+        project: '',
         dueDate: undefined,
       });
     }
   }, [taskToEdit, form, isOpen]);
 
-  const onSubmit = (data: TaskFormValues) => {
+  const onSubmit = async (data: TaskFormValues) => {
     if (taskToEdit) {
       // Update existing task
-      onUpdateTask({
+      const updatedTask = {
         ...taskToEdit,
         ...data,
-        updatedAt: new Date(),
+        updatedAt: new Date()
+      };
+      
+      onUpdateTask(updatedTask);
+      
+      // Show success message
+      toast({
+        title: "Task updated",
+        description: "The task has been successfully updated."
       });
+      
+      // Notify client if task status changed to complete
+      if (taskToEdit.status !== 'complete' && data.status === 'complete') {
+        try {
+          // In a real application, this would connect to an API endpoint
+          console.log("Task completed - notifying client:", taskToEdit.clientId);
+          // Simulating an API call to notify the client
+        } catch (error) {
+          console.error("Failed to send completion notification:", error);
+        }
+      }
     } else {
       // Add new task
-      const newTask: Task = {
+      const newTask = createTaskObject({
         id: `task-${Date.now()}`,
-        ...data,
+        title: data.title,
+        clientId: data.clientId,
+        description: data.description,
+        status: data.status,
+        estimatedHours: data.estimatedHours,
+        estimatedCost: data.estimatedCost,
+        project: data.project,
         createdAt: new Date(),
         updatedAt: new Date(),
-      };
+        dueDate: data.dueDate,
+      });
+      
       onAddTask(newTask);
+      
+      // Show success message
+      toast({
+        title: "Task created",
+        description: "The new task has been successfully created."
+      });
+      
+      // Notify client about new task
+      try {
+        // In a real application, this would connect to an API endpoint
+        console.log("New task created - notifying client:", data.clientId);
+        // Simulating an API call to notify the client
+      } catch (error) {
+        console.error("Failed to send creation notification:", error);
+      }
     }
     onClose();
   };
@@ -184,6 +232,20 @@ const AddTaskDialog: React.FC<AddTaskDialogProps> = ({
                       ))}
                     </SelectContent>
                   </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="project"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Project</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter project name" {...field} />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

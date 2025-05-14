@@ -38,14 +38,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
           {isOpen ? (
             <div className="flex items-center">
               <img
-                src="/lovable-uploads/6123bc56-fe6c-4d47-a531-d13782c5f5c0.png"
+                src="/images/6123bc56-fe6c-4d47-a531-d13782c5f5c0.png"
                 alt="Anthem Infotech"
                 className="h-10"
               />
             </div>
           ) : (
             <img
-              src="/lovable-uploads/6123bc56-fe6c-4d47-a531-d13782c5f5c0.png"
+              src="/images/6123bc56-fe6c-4d47-a531-d13782c5f5c0.png"
               alt="Anthem Infotech"
               className="h-9 w-9 object-contain"
               style={{ objectPosition: "left" }}

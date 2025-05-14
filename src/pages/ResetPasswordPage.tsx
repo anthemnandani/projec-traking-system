@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -8,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft } from 'lucide-react';
+import Cookies from 'js-cookie';
 
 const ResetPasswordPage: React.FC = () => {
   const { isAuthenticated, resetPassword, isLoading } = useAuth();
@@ -27,11 +27,16 @@ const ResetPasswordPage: React.FC = () => {
   
   // Extract token from URL
   useEffect(() => {
-    const tokenFromUrl = searchParams.get('token');
-    if (tokenFromUrl) {
-      setToken(tokenFromUrl);
+    const hash = window.location.hash; // e.g. "#access_token=xyz"
+    const params = new URLSearchParams(hash.slice(1)); // remove the "#"
+    const accessToken = params.get('access_token');
+  
+    if (accessToken) {
+      Cookies.set('auth_token', accessToken);
+      setToken(accessToken); // Optional if you still want to use token in state
     }
-  }, [searchParams]);
+  }, []);
+  
   
   const validateForm = () => {
     const newErrors: {password?: string; confirmPassword?: string} = {};
@@ -103,7 +108,7 @@ const ResetPasswordPage: React.FC = () => {
         <CardHeader className="space-y-1">
           <div className="flex justify-center mb-4">
             <img
-              src="/lovable-uploads/6123bc56-fe6c-4d47-a531-d13782c5f5c0.png"
+              src="images\6123bc56-fe6c-4d47-a531-d13782c5f5c0.png"
               alt="Anthem Infotech"
               className="h-16"
             />

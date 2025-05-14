@@ -62,7 +62,7 @@ const ForgotPasswordPage: React.FC = () => {
         <CardHeader className="space-y-1">
           <div className="flex justify-center mb-4">
             <img
-              src="/lovable-uploads/6123bc56-fe6c-4d47-a531-d13782c5f5c0.png"
+              src="/images/6123bc56-fe6c-4d47-a531-d13782c5f5c0.png"
               alt="Anthem Infotech"
               className="h-16"
             />

@@ -1,19 +1,12 @@
+import React from 'react';
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
 
-import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+const Index: React.FC = () => {
+  const { isLoggedIn } = useAuth();
 
-const Index = () => {
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    navigate('/login');
-  }, [navigate]);
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-anthem-purple"></div>
-    </div>
-  );
+  // Redirect to dashboard if logged in, else to login
+  return isLoggedIn ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />;
 };
 
 export default Index;

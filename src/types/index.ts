@@ -39,6 +39,7 @@ export interface Task {
   estimatedCost: number;
   actualHours?: number;
   actualCost?: number;
+  project?: string;
   createdAt: Date;
   updatedAt: Date;
   dueDate?: Date;
@@ -76,4 +77,16 @@ export interface DashboardStat {
   value: number;
   change: number;
   trend: 'up' | 'down' | 'neutral';
+}
+
+export interface Invoice {
+  id: string;
+  clientId: string;
+  taskId: string;
+  amount: number;
+  status: string;
+  dueDate: Date;
+  createdAt: Date;
+  updatedAt: Date;
+  paidAt?: Date;
 }

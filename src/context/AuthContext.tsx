@@ -1,85 +1,161 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { User, UserRole } from '@/types';
+import Cookies from 'js-cookie';
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
-  resetPassword: (token: string, password: string) => Promise<void>;
+  resetPassword: (password: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock user data for demo
-const MOCK_USERS = [
-  {
-    id: '1',
-    email: 'admin@antheminfotech.com',
-    name: 'Admin User',
-    role: 'admin' as UserRole,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: '2',
-    email: 'client@example.com',
-    name: 'Client User',
-    role: 'client' as UserRole,
-    clientId: '1',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  }
-];
-
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Initialize auth state and listen for changes
   useEffect(() => {
-    // Check for saved user in localStorage
-    const storedUser = localStorage.getItem('anthem_user');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (error) {
-        console.error('Failed to parse stored user:', error);
-        localStorage.removeItem('anthem_user');
+    const initializeAuth = async () => {
+      const token = Cookies.get('auth_token');
+      if (token) {
+        try {
+          const response = await fetch(`http://localhost:5000/api/users/me`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+            },
+            credentials: 'include'
+          });
+          if (response.ok) {
+            const backendUser = await response.json();
+            setUser({
+              id: backendUser.id,
+              email: backendUser.email,
+              name: backendUser.name,
+              role: backendUser.role as UserRole,
+              clientId: backendUser.clientId,
+              phone: backendUser.phone,
+              avatar_url: backendUser.avatar_url,
+              notification_preferences: backendUser.notification_preferences,
+              appearance_settings: backendUser.appearance_settings,
+              createdAt: new Date(backendUser.created_at),
+              updatedAt: new Date(backendUser.updated_at),
+              lastLogin: backendUser.last_login ? new Date(backendUser.last_login) : undefined
+            });
+            console.log("user:", backendUser);
+          } else {
+            Cookies.remove('auth_token');
+          }
+        } catch (error) {
+          console.error('Failed to fetch user data:', error);
+          Cookies.remove('auth_token');
+        }
       }
-    }
-    setIsLoading(false);
+      setIsLoading(false);
+    };
+
+    initializeAuth();
+
+    // Listen for auth state changes
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        const token = Cookies.get('auth_token');
+        if (token) {
+          try {
+            const response = await fetch(`http://localhost:5000/api/users/me`, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`
+              },
+              credentials: 'include'
+            });
+            if (response.ok) {
+              const backendUser = await response.json();
+              setUser({
+                id: backendUser.id,
+                email: backendUser.email,
+                name: backendUser.name,
+                role: backendUser.role as UserRole,
+                clientId: backendUser.clientId,
+                phone: backendUser.phone,
+                avatar_url: backendUser.avatar_url,
+                notification_preferences: backendUser.notification_preferences,
+                appearance_settings: backendUser.appearance_settings,
+                createdAt: new Date(backendUser.created_at),
+                updatedAt: new Date(backendUser.updated_at),
+                lastLogin: backendUser.last_login ? new Date(backendUser.last_login) : undefined
+              });
+            } else {
+              Cookies.remove('auth_token');
+            }
+          } catch (error) {
+            console.error('Failed to fetch user data on sign-in:', error);
+            Cookies.remove('auth_token');
+          }
+        }
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+        Cookies.remove('auth_token');
+      }
+      setIsLoading(false);
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
-    
-    // In a real app, this would be an API call
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Find user with matching email
-      const foundUser = MOCK_USERS.find(u => u.email.toLowerCase() === email.toLowerCase());
-      
-      if (!foundUser) {
-        throw new Error('Invalid email or password');
+      if (!email || !password) throw new Error('Email and password are required');
+      console.log('Sending login request:', { email, password });
+
+      const response = await fetch(`http://localhost:5000/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Login failed');
       }
-      
-      // In a real app, we would verify the password here
-      // For demo, we'll just accept any password
-      
-      // Update last login
-      const updatedUser = {
-        ...foundUser,
-        lastLogin: new Date()
-      };
-      
-      // Save to localStorage
-      localStorage.setItem('anthem_user', JSON.stringify(updatedUser));
-      setUser(updatedUser);
+
+      const { user: backendUser, session, token } = await response.json();
+      await supabase.auth.setSession({
+        access_token: session.access_token,
+        refresh_token: session.refresh_token
+      });
+
+      // Set JWT in cookie
+      Cookies.set('auth_token', token, {
+        expires: 1 / 24, 
+      });
+
+      setUser({
+        id: backendUser.id,
+        email: backendUser.email,
+        name: backendUser.name,
+        role: backendUser.role as UserRole,
+        clientId: backendUser.clientId,
+        phone: backendUser.phone,
+        avatar_url: backendUser.avatar_url,
+        notification_preferences: backendUser.notification_preferences,
+        appearance_settings: backendUser.appearance_settings,
+        createdAt: new Date(backendUser.created_at),
+        updatedAt: new Date(backendUser.updated_at),
+        lastLogin: backendUser.last_login ? new Date(backendUser.last_login) : undefined
+      });
     } catch (error) {
       console.error('Login failed:', error);
       throw error;
@@ -88,27 +164,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('anthem_user');
-    setUser(null);
+  const logout = async () => {
+    setIsLoading(true);
+    try {
+      const token = Cookies.get('auth_token');
+      const response = await fetch(`http://localhost:5000/api/auth/logout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Logout failed');
+      }
+
+      await supabase.auth.signOut();
+      Cookies.remove('auth_token');
+      setUser(null);
+    } catch (error) {
+      console.error('Logout failed:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const forgotPassword = async (email: string) => {
     setIsLoading(true);
-    
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Find user with matching email
-      const foundUser = MOCK_USERS.find(u => u.email.toLowerCase() === email.toLowerCase());
-      
-      if (!foundUser) {
-        throw new Error('No account found with this email');
+      const response = await fetch(`http://localhost:5000/api/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send reset email');
       }
-      
-      // In a real app, we would send an email with a password reset link
-      console.log(`Password reset email sent to ${email}`);
     } catch (error) {
       console.error('Forgot password failed:', error);
       throw error;
@@ -119,20 +217,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const resetPassword = async (token: string, password: string) => {
     setIsLoading(true);
-    
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // In a real app, we would verify the token and update the password
-      console.log(`Password reset successful for token ${token}`);
+      const response = await fetch(`http://localhost:5000/api/auth/reset-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ password }),
+        credentials: 'include',
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to reset password');
+      }
     } catch (error) {
       console.error('Reset password failed:', error);
       throw error;
     } finally {
       setIsLoading(false);
     }
-  };
+  };    
 
   return (
     <AuthContext.Provider value={{

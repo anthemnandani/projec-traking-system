@@ -32,12 +32,13 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Task, TaskStatus } from '@/types';
 import { format } from 'date-fns';
+import { useAuth } from '@/context/AuthContext';
 
 interface TaskListProps {
   tasks: Task[];
-  onEdit: (task: Task) => void;
-  onDelete: (taskId: string) => void;
-  onStatusChange: (taskId: string, status: TaskStatus) => void;
+  onEdit?: (task: Task) => void;
+  onDelete?: (taskId: string) => void;
+  onStatusChange?: (taskId: string, status: TaskStatus) => void;
 }
 
 const TaskList: React.FC<TaskListProps> = ({ 
@@ -46,6 +47,9 @@ const TaskList: React.FC<TaskListProps> = ({
   onDelete,
   onStatusChange
 }) => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+  
   const getStatusColor = (status: TaskStatus) => {
     switch (status) {
       case 'requirements':
@@ -100,7 +104,7 @@ const TaskList: React.FC<TaskListProps> = ({
 
   const confirmDelete = (taskId: string, taskTitle: string) => {
     if (window.confirm(`Are you sure you want to delete the task "${taskTitle}"?`)) {
-      onDelete(taskId);
+      onDelete?.(taskId);
     }
   };
 
@@ -110,19 +114,20 @@ const TaskList: React.FC<TaskListProps> = ({
         <TableHeader>
           <TableRow>
             <TableHead>Task</TableHead>
+            <TableHead>Project</TableHead>
             <TableHead>Client</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Due Date</TableHead>
             <TableHead>Est. Hours</TableHead>
             <TableHead>Est. Cost</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            {isAdmin && <TableHead className="text-right">Actions</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
           {tasks.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={7} className="text-center py-4 text-muted-foreground">
-                No tasks found. Create your first task to get started.
+              <TableCell colSpan={isAdmin ? 8 : 7} className="text-center py-4 text-muted-foreground">
+                No tasks found. {isAdmin && "Create your first task to get started."}
               </TableCell>
             </TableRow>
           ) : (
@@ -136,6 +141,7 @@ const TaskList: React.FC<TaskListProps> = ({
                     </p>
                   </div>
                 </TableCell>
+                <TableCell>{task.project || '-'}</TableCell>
                 <TableCell>{task.clientId}</TableCell>
                 <TableCell>
                   {getStatusBadge(task.status)}
@@ -145,43 +151,53 @@ const TaskList: React.FC<TaskListProps> = ({
                 </TableCell>
                 <TableCell>{task.estimatedHours}</TableCell>
                 <TableCell>${task.estimatedCost.toLocaleString()}</TableCell>
-                <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreVertical className="h-4 w-4" />
-                        <span className="sr-only">Open menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      
-                      <DropdownMenuItem onClick={() => onEdit(task)}>
-                        <Edit className="mr-2 h-4 w-4" />
-                        Edit
-                      </DropdownMenuItem>
-                      
-                      <DropdownMenuItem onClick={() => confirmDelete(task.id, task.title)}>
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                      
-                      <DropdownMenuSeparator />
-                      
-                      <DropdownMenuLabel>Change Status</DropdownMenuLabel>
-                      
-                      {getStatusOptions(task.status).map((option) => (
-                        <DropdownMenuItem 
-                          key={option.status}
-                          onClick={() => onStatusChange(task.id, option.status)}
-                        >
-                          {option.icon}
-                          {option.label}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
+                {isAdmin && (
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreVertical className="h-4 w-4" />
+                          <span className="sr-only">Open menu</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        
+                        {onEdit && (
+                          <DropdownMenuItem onClick={() => onEdit(task)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                        )}
+                        
+                        {onDelete && (
+                          <DropdownMenuItem onClick={() => confirmDelete(task.id, task.title)}>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        )}
+                        
+                        {onStatusChange && (
+                          <>
+                            <DropdownMenuSeparator />
+                            
+                            <DropdownMenuLabel>Change Status</DropdownMenuLabel>
+                            
+                            {getStatusOptions(task.status).map((option) => (
+                              <DropdownMenuItem 
+                                key={option.status}
+                                onClick={() => onStatusChange(task.id, option.status)}
+                              >
+                                {option.icon}
+                                {option.label}
+                              </DropdownMenuItem>
+                            ))}
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                )}
               </TableRow>
             ))
           )}

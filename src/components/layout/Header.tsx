@@ -47,12 +47,12 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, sidebarOpen }) => {
         <div className="flex items-center">
           {!isMobile && !sidebarOpen && (
             <img
-              src="/lovable-uploads/6123bc56-fe6c-4d47-a531-d13782c5f5c0.png"
+              src="/images/6123bc56-fe6c-4d47-a531-d13782c5f5c0.png"
               alt="Anthem Infotech"
               className="h-8 mr-3"
             />
           )}
-          <h1 className="text-xl font-semibold text-gray-800">Anthem Infotech</h1>
+          {/* <h1 className="text-xl font-semibold text-gray-800">Anthem Infotech</h1> */}
         </div>
       </div>
       

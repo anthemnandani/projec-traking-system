@@ -1,14 +1,15 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Payment, PaymentStatus } from '@/types';
-import { Edit, MoreVertical, Trash2, FileText } from 'lucide-react';
+import { Edit, MoreVertical, Trash2, FileText, CreditCard } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 // Mock data for payment list
 const mockPayments: Payment[] = [
@@ -96,9 +97,37 @@ interface PaymentListProps {
 }
 
 const PaymentList: React.FC<PaymentListProps> = ({ onEdit }) => {
-  const [payments, setPayments] = useState<Payment[]>(mockPayments);
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [paymentToDelete, setPaymentToDelete] = useState<string | null>(null);
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+  const clientId = user?.clientId;
+
+  useEffect(() => {
+    // Load payments, filter by client if client user
+    const loadPayments = async () => {
+      try {
+        // For admin, show all payments. For client, only show their invoiced payments
+        let filteredPayments = [...mockPayments];
+        
+        if (clientId) {
+          filteredPayments = filteredPayments.filter(payment => 
+            payment.clientId === clientId && ['invoiced', 'overdue', 'pending'].includes(payment.status)
+          );
+        }
+        
+        setPayments(filteredPayments);
+      } catch (error) {
+        console.error("Error loading payments:", error);
+        toast.error("Failed to load payment data");
+      }
+    };
+    
+    loadPayments();
+  }, [clientId]);
 
   const getStatusColor = (status: PaymentStatus) => {
     switch (status) {
@@ -157,12 +186,66 @@ const PaymentList: React.FC<PaymentListProps> = ({ onEdit }) => {
     }).format(amount);
   };
 
+  const initiatePayment = (payment: Payment) => {
+    setSelectedPayment(payment);
+    setPaymentDialogOpen(true);
+  };
+
+  const handlePaymentCompleted = async (payment: Payment) => {
+    try {
+      // Update payment status to 'received'
+      const updatedPayments = payments.map(p => 
+        p.id === payment.id 
+          ? { ...p, status: 'received' as PaymentStatus, receivedAt: new Date(), updatedAt: new Date() } 
+          : p
+      );
+      
+      setPayments(updatedPayments);
+      
+      // Close payment dialog
+      setPaymentDialogOpen(false);
+      setSelectedPayment(null);
+      
+      // Show success message
+      toast.success("Payment completed successfully!");
+      
+      // In a real app, you would update the database here
+      // For now, we simulate sending an email notification
+      try {
+        // This would be a call to a Supabase function in production
+        console.log("Sending payment confirmation email to admin");
+        // Simulate email notification
+        setTimeout(() => {
+          console.log("Email sent: Client has made a payment for invoice", payment.invoiceNumber);
+        }, 1000);
+      } catch (emailError) {
+        console.error("Failed to send email notification", emailError);
+      }
+    } catch (error) {
+      console.error("Error processing payment:", error);
+      toast.error("Payment processing failed");
+    }
+  };
+
+  const handlePayNow = (payment: Payment) => {
+    // In a production app, this would integrate with PayPal's API
+    // For now, we'll simulate opening PayPal
+    window.open(`https://www.paypal.com/checkoutnow?token=demo-${payment.id}`, '_blank');
+    
+    toast.success('Redirecting to PayPal for payment processing');
+    
+    // Simulate a successful payment after the PayPal window is opened
+    setTimeout(() => {
+      handlePaymentCompleted(payment);
+    }, 3000);
+  };
+
   return (
     <div>
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Client</TableHead>
+            <TableHead>{isAdmin ? 'Client' : 'Task'}</TableHead>
             <TableHead>Amount</TableHead>
             <TableHead>Due Date</TableHead>
             <TableHead>Status</TableHead>
@@ -171,66 +254,96 @@ const PaymentList: React.FC<PaymentListProps> = ({ onEdit }) => {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {payments.map((payment) => (
-            <TableRow key={payment.id} className={getRowColor(payment.status)}>
-              <TableCell className="font-medium">{clientNames[payment.clientId]}</TableCell>
-              <TableCell>{formatCurrency(payment.amount)}</TableCell>
-              <TableCell>{format(payment.dueDate, 'MMM d, yyyy')}</TableCell>
-              <TableCell>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className={`rounded-full px-2.5 text-xs font-semibold ${getStatusColor(payment.status)}`}>
-                      {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    <DropdownMenuItem onClick={() => handleStatusChange(payment.id, 'due')}>
-                      <Badge variant="outline" className={getStatusColor('due')}>Due</Badge>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleStatusChange(payment.id, 'invoiced')}>
-                      <Badge variant="outline" className={getStatusColor('invoiced')}>Invoiced</Badge>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleStatusChange(payment.id, 'pending')}>
-                      <Badge variant="outline" className={getStatusColor('pending')}>Pending</Badge>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleStatusChange(payment.id, 'received')}>
-                      <Badge variant="outline" className={getStatusColor('received')}>Received</Badge>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleStatusChange(payment.id, 'overdue')}>
-                      <Badge variant="outline" className={getStatusColor('overdue')}>Overdue</Badge>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleStatusChange(payment.id, 'canceled')}>
-                      <Badge variant="outline" className={getStatusColor('canceled')}>Canceled</Badge>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-              <TableCell>{payment.invoiceNumber || '-'}</TableCell>
-              <TableCell className="text-right">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => onEdit(payment.id)}>
-                      <Edit className="mr-2 h-4 w-4" />
-                      Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => generateInvoice(payment.id)}>
-                      <FileText className="mr-2 h-4 w-4" />
-                      Generate Invoice
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="text-destructive" onClick={() => confirmDelete(payment.id)}>
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+          {payments.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
+                No payments found.
               </TableCell>
             </TableRow>
-          ))}
+          ) : (
+            payments.map((payment) => (
+              <TableRow key={payment.id} className={getRowColor(payment.status)}>
+                <TableCell className="font-medium">
+                  {isAdmin ? clientNames[payment.clientId] : `Task #${payment.taskId}`}
+                </TableCell>
+                <TableCell>{formatCurrency(payment.amount)}</TableCell>
+                <TableCell>{format(payment.dueDate, 'MMM d, yyyy')}</TableCell>
+                <TableCell>
+                  {isAdmin ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className={`rounded-full px-2.5 text-xs font-semibold ${getStatusColor(payment.status)}`}>
+                          {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
+                        <DropdownMenuItem onClick={() => handleStatusChange(payment.id, 'due')}>
+                          <Badge variant="outline" className={getStatusColor('due')}>Due</Badge>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleStatusChange(payment.id, 'invoiced')}>
+                          <Badge variant="outline" className={getStatusColor('invoiced')}>Invoiced</Badge>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleStatusChange(payment.id, 'pending')}>
+                          <Badge variant="outline" className={getStatusColor('pending')}>Pending</Badge>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleStatusChange(payment.id, 'received')}>
+                          <Badge variant="outline" className={getStatusColor('received')}>Received</Badge>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleStatusChange(payment.id, 'overdue')}>
+                          <Badge variant="outline" className={getStatusColor('overdue')}>Overdue</Badge>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleStatusChange(payment.id, 'canceled')}>
+                          <Badge variant="outline" className={getStatusColor('canceled')}>Canceled</Badge>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : (
+                    <Badge className={`${getStatusColor(payment.status)}`}>
+                      {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
+                    </Badge>
+                  )}
+                </TableCell>
+                <TableCell>{payment.invoiceNumber || '-'}</TableCell>
+                <TableCell className="text-right">
+                  {isAdmin ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => onEdit(payment.id)}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => generateInvoice(payment.id)}>
+                          <FileText className="mr-2 h-4 w-4" />
+                          Generate Invoice
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="text-destructive" onClick={() => confirmDelete(payment.id)}>
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : (
+                    ['invoiced', 'pending', 'overdue'].includes(payment.status) && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handlePayNow(payment)}
+                        className="flex items-center gap-1"
+                      >
+                        <CreditCard className="h-3 w-3" />
+                        Pay Now
+                      </Button>
+                    )
+                  )}
+                </TableCell>
+              </TableRow>
+            ))
+          )}
         </TableBody>
       </Table>
 
@@ -246,6 +359,50 @@ const PaymentList: React.FC<PaymentListProps> = ({ onEdit }) => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
             <Button variant="destructive" onClick={handleDelete}>Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment Confirmation Dialog */}
+      <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Payment Confirmation</DialogTitle>
+            <DialogDescription>
+              You are about to make a payment to Anthem InfoTech Pvt Ltd.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedPayment && (
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Invoice Number:</p>
+                  <p>{selectedPayment.invoiceNumber || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Amount:</p>
+                  <p className="font-semibold">{formatCurrency(selectedPayment.amount)}</p>
+                </div>
+              </div>
+              
+              <div>
+                <p className="text-sm font-medium text-gray-500">Recipient:</p>
+                <p>Anthem InfoTech Pvt Ltd</p>
+              </div>
+              
+              <div>
+                <p className="text-sm font-medium text-gray-500">Payment Method:</p>
+                <p>PayPal</p>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>Cancel</Button>
+            <Button onClick={() => selectedPayment && handlePayNow(selectedPayment)}>
+              Proceed to PayPal
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
