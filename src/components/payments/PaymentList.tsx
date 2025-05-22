@@ -14,10 +14,12 @@ import CustomPagination from '@/components/CustomPagination';
 import DeleteDialog from '../../components/DeleteDialog';
 import { debounce } from 'lodash';
 
-const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
-  const timeout = new Promise<T>((_, reject) => setTimeout(() => reject(new Error('Timed out')), timeoutMs));
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  const timeout = new Promise<T>((_, reject) => {
+    setTimeout(() => reject(new Error('Timed out')), timeoutMs);
+  });
   return Promise.race([promise, timeout]);
-};
+}
 
 interface PaymentListProps {
   payments: Payment[];

@@ -15,12 +15,12 @@ import DeleteDialog from '../../components/DeleteDialog';
 import { debounce } from 'lodash';
 import { toast } from 'sonner';
 
-const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   const timeout = new Promise<T>((_, reject) => {
-    setTimeout(() => reject(new Error(`Operation timed out after ${timeoutMs}ms`)), timeoutMs);
+    setTimeout(() => reject(new Error('Timed out')), timeoutMs);
   });
   return Promise.race([promise, timeout]);
-};
+}
 
 interface TaskListProps {
   tasks: Task[];
