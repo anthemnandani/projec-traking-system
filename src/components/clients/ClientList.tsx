@@ -20,6 +20,7 @@ import CustomPagination from '@/components/CustomPagination';
 import DeleteDialog from '../../components/DeleteDialog';
 import { debounce } from 'lodash';
 
+
 // Timeout utility
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   const timeout = new Promise<T>((_, reject) => {
@@ -179,7 +180,7 @@ const ClientList: React.FC<ClientListProps> = ({ onEdit }) => {
 
     setIsProcessing(true);
     try {
-      const response = await fetch('https://projec-traking-system-backend.vercel.app/api/client/resend-credentials', {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/client/resend-credentials`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -208,7 +209,7 @@ const ClientList: React.FC<ClientListProps> = ({ onEdit }) => {
       setIsProcessing(false);
     }
   };
-
+  
   const handleResendCredentials = async (client: Client) => {
     if (!client.email) {
       toast.error('Email is missing');
@@ -217,7 +218,7 @@ const ClientList: React.FC<ClientListProps> = ({ onEdit }) => {
 
     setIsProcessing(true);
     try {
-      const response = await fetch('http://localhost:5000 /api/client/resend-credentials-only', {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/client/resend-credentials-only`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
