@@ -46,32 +46,20 @@ const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({ open, onOpenChange,
     }
   }, []);
 
-  const fetchTasks = useCallback(async (clientId: string, retryCount = 0) => {
-    if (!clientId) {
-      console.log('No clientId provided for fetchTasks');
-      return [];
-    }
+  const fetchTasks = useCallback(async (clientId: string) => {
+    if (!clientId) return [];
     setIsLoadingTasks(true);
     try {
-      console.log('Fetching tasks for clientId:', clientId);
       const { data, error } = await supabase.from('tasks').select('id, title').eq('client_id', clientId).order('title', { ascending: true });
       if (error) throw error;
-      console.log('Fetched tasks for client:', clientId, 'Tasks:', data);
       setTasks(data ?? []);
       return data ?? [];
-    } catch (err: any) {
-      console.error('Fetch tasks error:', err.message, 'ClientId:', clientId);
-      if (retryCount < 1) {
-        console.warn('Retrying fetchTasks... Attempt:', retryCount + 1);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        return fetchTasks(clientId, retryCount + 1);
-      }
+    } catch (err) {
+      console.error('Fetch tasks error:', err);
       toast.error('Failed to load tasks');
-      setTasks([]);
       return [];
     } finally {
       setIsLoadingTasks(false);
-      console.log('isLoadingTasks set to false');
     }
   }, []);
 
@@ -90,13 +78,16 @@ const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({ open, onOpenChange,
           invoiceNumber: data.invoice_number || '',
           notes: data.notes || '',
         };
+        // Fetch tasks and wait for them to load
         let tasks = await fetchTasks(data.client_id);
         console.log('Fetched payment:', data, 'Tasks:', tasks);
+        // Fallback: Ensure task_id is in tasks
         if (!tasks.some(t => t.id === data.task_id)) {
           console.warn('Task ID not found in tasks, refetching...');
-          tasks = await fetchTasks(data.client_id);
+          tasks = await fetchTasks(data.client_id); // Retry fetch
         }
         setDefaultValues(paymentValues);
+        // Reset form after tasks are loaded
         formRef.current?.reset(paymentValues);
         console.log('Form reset with:', paymentValues);
       }
@@ -108,6 +99,7 @@ const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({ open, onOpenChange,
 
   useEffect(() => {
     if (open) {
+      // Clear state on dialog open
       setTasks([]);
       setDefaultValues({
         clientId: '',

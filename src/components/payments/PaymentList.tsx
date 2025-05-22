@@ -243,9 +243,9 @@ const PaymentList: React.FC<PaymentListProps> = ({ payments, onEdit, onDelete })
                         <DropdownMenuItem onClick={() => onEdit(payment.id)} disabled={isProcessing}>
                           <Edit className="mr-2 h-4 w-4" /> Edit
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => generateInvoice(payment.id)} disabled={isProcessing}>
+                        {/* <DropdownMenuItem onClick={() => generateInvoice(payment.id)} disabled={isProcessing}>
                           <FileText className="mr-2 h-4 w-4" /> Generate Invoice
-                        </DropdownMenuItem>
+                        </DropdownMenuItem> */}
                         <DropdownMenuItem className="text-destructive" onClick={() => confirmDelete(payment.id)} disabled={isProcessing}>
                           <Trash2 className="mr-2 h-4 w-4" /> Delete
                         </DropdownMenuItem>

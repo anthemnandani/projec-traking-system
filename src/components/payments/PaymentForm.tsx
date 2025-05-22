@@ -1,4 +1,4 @@
-import React, { useImperativeHandle, forwardRef, useEffect } from 'react';
+import React, { useImperativeHandle, forwardRef, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -15,6 +15,7 @@ import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PaymentStatus } from '@/types';
 import SimpleDatePicker from '../ui/CustomCalendar';
+import { debounce } from 'lodash';
 
 const paymentSchema = z.object({
   clientId: z.string().min(1, 'Client is required'),
@@ -94,15 +95,23 @@ const PaymentForm = forwardRef<PaymentFormRef, PaymentFormProps>(
       }
     }, [form.formState.errors]);
 
+    // Debounced client change handler
+    const handleClientChange = useCallback(
+      debounce((clientId: string) => {
+        console.log('Client changed to:', clientId, 'Current taskId:', form.getValues('taskId'));
+        form.setValue('taskId', '');
+        onClientChange?.(clientId);
+      }, 500),
+      [onClientChange, form]
+    );
+
     // Watch clientId and fetch tasks when it changes
     const selectedClientId = form.watch('clientId');
     useEffect(() => {
-      if (selectedClientId && !isEditing && !isLoadingTasks && tasks.length > 0) {
-        console.log('Client changed to:', selectedClientId, 'Current taskId:', form.getValues('taskId'), 'Tasks:', tasks);
-        form.setValue('taskId', '');
-        onClientChange?.(selectedClientId);
+      if (selectedClientId && !isEditing && !isLoadingTasks) {
+        handleClientChange(selectedClientId);
       }
-    }, [selectedClientId, onClientChange, form, isEditing, isLoadingTasks, tasks]);
+    }, [selectedClientId, handleClientChange, isEditing, isLoadingTasks]);
 
     return (
       <Form {...form}>
@@ -246,7 +255,7 @@ const PaymentForm = forwardRef<PaymentFormRef, PaymentFormProps>(
                   <Textarea placeholder="Any notes related to the payment..." {...field} />
                 </FormControl>
                 <FormMessage />
-              </FormItem>
+                </FormItem>
             )}
           />
           <button type="submit" style={{ display: 'none' }} />
