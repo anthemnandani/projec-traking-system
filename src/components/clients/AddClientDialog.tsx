@@ -6,13 +6,14 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { supabase } from '../../integrations/supabase/client';
 import ClientForm, { ClientFormRef } from './ClientForm';
-import { ClientStatus } from '@/types';
+import { Client, ClientStatus } from '@/types';
 
 interface AddClientDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   clientId: string | null;
   onClientSaved: () => void;
+  onAddClient?: (client: Client) => void;
 }
 
 const AddClientDialog: React.FC<AddClientDialogProps> = ({
@@ -20,6 +21,7 @@ const AddClientDialog: React.FC<AddClientDialogProps> = ({
   onOpenChange,
   clientId,
   onClientSaved,
+  onAddClient,
 }) => {
   const isEditing = !!clientId;
   const [loading, setLoading] = useState(false);
@@ -92,6 +94,7 @@ const AddClientDialog: React.FC<AddClientDialogProps> = ({
     const payload = {
       ...values,
       updated_at: new Date().toISOString(),
+      created_at: new Date().toISOString(), // Ensure created_at is set for new clients
     };
 
     try {
@@ -101,14 +104,32 @@ const AddClientDialog: React.FC<AddClientDialogProps> = ({
           .update(payload)
           .eq('id', clientId);
 
-        if (error) throw new Error(error.message);
+        if (error) throw new Error(`Failed to update client: ${error.message}`);
         toast.success('Client updated successfully');
       } else {
-        const { error } = await supabase.from('clients').insert([payload]);
-        if (error) throw new Error(error.message);
+        const { data, error } = await supabase
+          .from('clients')
+          .insert([payload])
+          .select()
+          .single();
+        if (error) throw new Error(`Failed to add client: ${error.message}`);
+        if (data && onAddClient) {
+          const newClient: Client = {
+            id: data.id,
+            name: data.name,
+            email: data.email,
+            phone: data.phone,
+            address: data.address,
+            status: data.status as ClientStatus,
+            hasAccount: data.has_account || false,
+            notes: data.notes,
+            createdAt: new Date(data.created_at),
+            updatedAt: new Date(data.updated_at),
+          };
+          onAddClient(newClient);
+        }
         toast.success('Client added successfully');
       }
-
       onOpenChange(false);
       onClientSaved();
     } catch (err: any) {
@@ -118,8 +139,6 @@ const AddClientDialog: React.FC<AddClientDialogProps> = ({
       setLoading(false);
     }
   };
-
-  if (!open) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

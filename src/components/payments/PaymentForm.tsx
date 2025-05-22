@@ -1,4 +1,4 @@
-import React, { useImperativeHandle, forwardRef, useEffect, useCallback } from 'react';
+import React, { useImperativeHandle, forwardRef, useEffect, useCallback, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -71,6 +71,7 @@ const PaymentForm = forwardRef<PaymentFormRef, PaymentFormProps>(
       resolver: zodResolver(paymentSchema),
       defaultValues,
     });
+    const prevClientIdRef = useRef<string>(''); // Track previous clientId
 
     useImperativeHandle(ref, () => ({
       submit: () => form.handleSubmit(onSubmit)(),
@@ -108,8 +109,14 @@ const PaymentForm = forwardRef<PaymentFormRef, PaymentFormProps>(
     // Watch clientId and fetch tasks when it changes
     const selectedClientId = form.watch('clientId');
     useEffect(() => {
-      if (selectedClientId && !isEditing && !isLoadingTasks) {
+      if (
+        selectedClientId &&
+        selectedClientId !== prevClientIdRef.current && // Only trigger if clientId actually changed
+        !isEditing &&
+        !isLoadingTasks
+      ) {
         handleClientChange(selectedClientId);
+        prevClientIdRef.current = selectedClientId; // Update previous clientId
       }
     }, [selectedClientId, handleClientChange, isEditing, isLoadingTasks]);
 
@@ -255,7 +262,7 @@ const PaymentForm = forwardRef<PaymentFormRef, PaymentFormProps>(
                   <Textarea placeholder="Any notes related to the payment..." {...field} />
                 </FormControl>
                 <FormMessage />
-                </FormItem>
+              </FormItem>
             )}
           />
           <button type="submit" style={{ display: 'none' }} />

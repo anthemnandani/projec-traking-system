@@ -17,12 +17,43 @@ import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Bell, Moon, Settings, User, Eye, EyeOff } from "lucide-react";
+import { supabase } from "../integrations/supabase/client";
 
 const SettingsPage: React.FC = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { user } = useAuth();
+
+    const handlePasswordReset = async () => {
+    if (newPassword !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      toast.success("Password updated successfully");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to reset password");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
@@ -140,6 +171,8 @@ const SettingsPage: React.FC = () => {
                           id="new-password"
                           type={showNewPassword ? "text" : "password"}
                           className="pr-10"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
                         />
                         <button
                           type="button"
@@ -166,6 +199,8 @@ const SettingsPage: React.FC = () => {
                           id="confirm-password"
                           type={showConfirmPassword ? "text" : "password"}
                           className="pr-10"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
                         />
                         <button
                           type="button"
@@ -191,7 +226,15 @@ const SettingsPage: React.FC = () => {
               <Button variant="outline" className="mr-2">
                 Cancel
               </Button>
-              <Button onClick={handleSaveProfile}>Save Changes</Button>
+              <Button
+                onClick={(e) => {
+                  e.preventDefault();
+                  handlePasswordReset();
+                }}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Saving..." : "Save Changes"}
+              </Button>
             </CardFooter>
           </Card>
         </TabsContent>

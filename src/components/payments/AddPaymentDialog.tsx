@@ -47,11 +47,15 @@ const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({ open, onOpenChange,
   }, []);
 
   const fetchTasks = useCallback(async (clientId: string) => {
-    if (!clientId) return [];
+    if (!clientId) {
+      setTasks([]);
+      return [];
+    }
     setIsLoadingTasks(true);
     try {
       const { data, error } = await supabase.from('tasks').select('id, title').eq('client_id', clientId).order('title', { ascending: true });
       if (error) throw error;
+      console.log('Fetched tasks for client:', clientId, 'Tasks:', data);
       setTasks(data ?? []);
       return data ?? [];
     } catch (err) {
@@ -78,16 +82,12 @@ const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({ open, onOpenChange,
           invoiceNumber: data.invoice_number || '',
           notes: data.notes || '',
         };
-        // Fetch tasks and wait for them to load
-        let tasks = await fetchTasks(data.client_id);
-        console.log('Fetched payment:', data, 'Tasks:', tasks);
-        // Fallback: Ensure task_id is in tasks
+        console.log('Fetching tasks for edit mode, client:', data.client_id);
+        const tasks = await fetchTasks(data.client_id);
         if (!tasks.some(t => t.id === data.task_id)) {
-          console.warn('Task ID not found in tasks, refetching...');
-          tasks = await fetchTasks(data.client_id); // Retry fetch
+          console.warn('Task ID not found in tasks:', data.task_id);
         }
         setDefaultValues(paymentValues);
-        // Reset form after tasks are loaded
         formRef.current?.reset(paymentValues);
         console.log('Form reset with:', paymentValues);
       }
@@ -99,21 +99,11 @@ const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({ open, onOpenChange,
 
   useEffect(() => {
     if (open) {
-      // Clear state on dialog open
-      setTasks([]);
-      setDefaultValues({
-        clientId: '',
-        taskId: '',
-        amount: 0,
-        status: 'due',
-        dueDate: undefined,
-        invoiceNumber: '',
-        notes: '',
-      });
       fetchClients();
       if (isEditing) {
         fetchPayment();
       } else {
+        // Initialize form for add mode
         const initialValues = {
           clientId: '',
           taskId: '',
@@ -124,22 +114,10 @@ const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({ open, onOpenChange,
           notes: '',
         };
         setDefaultValues(initialValues);
+        setTasks([]);
         formRef.current?.reset(initialValues);
-        console.log('Add mode reset with:', initialValues);
+        console.log('Add mode initialized with:', initialValues);
       }
-    } else {
-      const initialValues = {
-        clientId: '',
-        taskId: '',
-        amount: 0,
-        status: 'due',
-        dueDate: undefined,
-        invoiceNumber: '',
-        notes: '',
-      };
-      setDefaultValues(initialValues);
-      setTasks([]);
-      formRef.current?.reset(initialValues);
     }
   }, [open, fetchClients, fetchPayment, isEditing]);
 
@@ -204,8 +182,6 @@ const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({ open, onOpenChange,
       toast.error('Failed to save payment');
     }
   };
-
-  if (!open) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

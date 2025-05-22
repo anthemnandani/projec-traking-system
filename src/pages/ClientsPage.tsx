@@ -1,14 +1,15 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import ClientList from '@/components/clients/ClientList';
 import AddClientDialog from '@/components/clients/AddClientDialog';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
+import { Client } from '@/types';
 
 const ClientsPage: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [clientToEdit, setClientToEdit] = useState<string | null>(null);
+  const [addClientCallback, setAddClientCallback] = useState<((client: Client) => void) | null>(null);
 
   return (
     <div className="space-y-6">
@@ -28,10 +29,13 @@ const ClientsPage: React.FC = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ClientList onEdit={(id) => {
-            setClientToEdit(id);
-            setOpen(true);
-          }} />
+          <ClientList 
+            onEdit={(id) => {
+              setClientToEdit(id);
+              setOpen(true);
+            }} 
+            onAddClient={(callback) => setAddClientCallback(() => callback)}
+          />
         </CardContent>
       </Card>
 
@@ -40,6 +44,7 @@ const ClientsPage: React.FC = () => {
         onOpenChange={setOpen}
         clientId={clientToEdit}
         onClientSaved={() => setClientToEdit(null)}
+        onAddClient={addClientCallback}
       />
     </div>
   );

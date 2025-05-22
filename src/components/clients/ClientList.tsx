@@ -20,28 +20,19 @@ import CustomPagination from '@/components/CustomPagination';
 import DeleteDialog from '../../components/DeleteDialog';
 import { debounce } from 'lodash';
 
-
-// Timeout utility
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   const timeout = new Promise<T>((_, reject) => {
-    setTimeout(() => {
-      console.warn(`Operation timed out after ${timeoutMs}ms`);
-      reject(new Error(`Operation timed out after ${timeoutMs}ms`));
-    }, timeoutMs);
+    setTimeout(() => reject(new Error(`Operation timed out after ${timeoutMs}ms`)), timeoutMs);
   });
-  try {
-    return await Promise.race([promise, timeout]);
-  } catch (error: any) {
-    console.error(`withTimeout error: ${error.message}`, error.stack);
-    throw error;
-  }
+  return Promise.race([promise, timeout]);
 }
 
 interface ClientListProps {
   onEdit: (clientId: string) => void;
+  onAddClient: (callback: (client: Client) => void) => void;
 }
 
-const ClientList: React.FC<ClientListProps> = ({ onEdit }) => {
+const ClientList: React.FC<ClientListProps> = ({ onEdit, onAddClient }) => {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -56,50 +47,126 @@ const ClientList: React.FC<ClientListProps> = ({ onEdit }) => {
   const [showPassword, setShowPassword] = useState(false);
   const dropdownTriggerRef = useRef<HTMLButtonElement | null>(null);
 
-  // Debounce setDeleteDialogOpen
   const debouncedSetDeleteDialogOpen = useCallback(
-    debounce((open: boolean) => {
-      console.log(`Debounced setDeleteDialogOpen: ${open}`);
-      setDeleteDialogOpen(open);
-    }, 300),
+    debounce((open: boolean) => setDeleteDialogOpen(open), 300),
     []
   );
 
+  // Register callback for adding clients
   useEffect(() => {
-    const fetchClients = async () => {
-      setLoading(true);
-      try {
-        const { data, error } = await withTimeout(
-          supabase.from('clients').select('*').order('created_at', { ascending: false }),
-          5000
-        );
-        if (error) throw new Error(`Failed to fetch clients: ${error.message}`);
+    onAddClient((newClient: Client) => {
+      setClients((prev) => [newClient, ...prev.filter((c) => c.id !== newClient.id)]);
+    });
+  }, [onAddClient]);
 
-        const formatted = data.map((client: any) => ({
-          id: client.id,
-          name: client.name,
-          email: client.email,
-          phone: client.phone,
-          address: client.address,
-          status: client.status as ClientStatus,
-          hasAccount: client.has_account,
-          notes: client.notes,
-          createdAt: new Date(client.created_at),
-          updatedAt: new Date(client.updated_at),
-        }));
+  // Fetch clients
+  const fetchClients = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await withTimeout(
+        supabase.from('clients').select('*').order('created_at', { ascending: false }),
+        5000
+      );
+      if (error) throw new Error(`Failed to fetch clients: ${error.message}`);
 
-        setClients(formatted);
-        console.log('Clients from Supabase:', formatted);
-      } catch (err: any) {
-        console.error('Error fetching clients:', err.message, err.stack);
-        setError(err.message || 'Failed to load clients');
-        toast.error(err.message || 'Failed to load clients');
-      } finally {
-        setLoading(false);
-      }
-    };
+      const formatted = data.map((client: any) => ({
+        id: client.id,
+        name: client.name,
+        email: client.email,
+        phone: client.phone,
+        address: client.address,
+        status: client.status as ClientStatus,
+        hasAccount: client.has_account,
+        notes: client.notes,
+        createdAt: new Date(client.created_at),
+        updatedAt: new Date(client.updated_at),
+      }));
 
+      setClients(formatted);
+      console.log('Clients from Supabase:', formatted);
+    } catch (err: any) {
+      console.error('Error fetching clients:', err);
+      setError(err.message || 'Failed to load clients');
+      toast.error(err.message || 'Failed to load clients');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
     fetchClients();
+  }, [fetchClients]);
+
+  // Real-time subscription
+  useEffect(() => {
+    const subscription = supabase
+      .channel('clients_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'clients',
+        },
+        (payload) => {
+          console.log('Real-time client event:', payload);
+          if (payload.eventType === 'INSERT') {
+            const newClient: Client = {
+              id: payload.new.id,
+              name: payload.new.name,
+              email: payload.new.email,
+              phone: payload.new.phone,
+              address: payload.new.address,
+              status: payload.new.status as ClientStatus,
+              hasAccount: payload.new.has_account,
+              notes: payload.new.notes,
+              createdAt: new Date(payload.new.created_at),
+              updatedAt: new Date(payload.new.updated_at),
+            };
+            setClients((prev) => [newClient, ...prev.filter((c) => c.id !== newClient.id)]);
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedClient: Client = {
+              id: payload.new.id,
+              name: payload.new.name,
+              email: payload.new.email,
+              phone: payload.new.phone,
+              address: payload.new.address,
+              status: payload.new.status as ClientStatus,
+              hasAccount: payload.new.has_account,
+              notes: payload.new.notes,
+              createdAt: new Date(payload.new.created_at),
+              updatedAt: new Date(payload.new.updated_at),
+            };
+            setClients((prev) =>
+              prev.map((c) => (c.id === updatedClient.id ? updatedClient : c))
+            );
+          } else if (payload.eventType === 'DELETE') {
+            console.log('Processing DELETE event for client:', payload.old.id);
+            setClients((prev) => {
+              const updatedClients = prev.filter((c) => c.id !== payload.old.id);
+              console.log('Clients after DELETE event:', updatedClients);
+              return updatedClients;
+            });
+          }
+        }
+      )
+      .subscribe((status, err) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('Subscribed to clients table changes');
+        } else if (err) {
+          console.error('Subscription error:', err);
+          toast({
+            title: "Error",
+            description: "Failed to subscribe to client updates. Changes may not reflect in real-time.",
+            variant: "destructive",
+          });
+        }
+      });
+
+    return () => {
+      console.log('Unsubscribing from clients table changes');
+      supabase.removeChannel(subscription);
+    };
   }, []);
 
   const getStatusColor = (status: ClientStatus) => {
@@ -134,18 +201,27 @@ const ClientList: React.FC<ClientListProps> = ({ onEdit }) => {
     }
     setIsProcessing(true);
     try {
-      console.log('Deleting client:', clientToDelete);
+      // Optimistic update
+      const previousClients = clients;
+      setClients((prev) => {
+        const updatedClients = prev.filter((c) => c.id !== clientToDelete);
+        console.log('Optimistically removed client:', clientToDelete, 'New clients:', updatedClients);
+        return updatedClients;
+      });
+
       const { error } = await withTimeout(
         supabase.from('clients').delete().eq('id', clientToDelete),
         5000
       );
-      if (error) throw new Error(`Failed to delete client: ${error.message}`);
-      setClients(clients.filter(c => c.id !== clientToDelete));
+      if (error) {
+        setClients(previousClients); // Revert on error
+        throw new Error(`Failed to delete client: ${error.message}`);
+      }
       toast.success('Client deleted successfully');
       debouncedSetDeleteDialogOpen(false);
       setClientToDelete(null);
     } catch (err: any) {
-      console.error('Error deleting client:', err.message, err.stack);
+      console.error('Error deleting client:', err);
       toast.error(err.message || 'Failed to delete client');
       debouncedSetDeleteDialogOpen(false);
       setClientToDelete(null);
@@ -195,15 +271,15 @@ const ClientList: React.FC<ClientListProps> = ({ onEdit }) => {
       if (!response.ok) throw new Error(data.message || 'Failed to create account');
 
       toast.success('Account created and credentials sent');
-      setClients(prev =>
-        prev.map(c =>
+      setClients((prev) =>
+        prev.map((c) =>
           c.id === clientToCreateAccount.id ? { ...c, hasAccount: true } : c
         )
       );
       setCreateAccountDialogOpen(false);
       setPassword('');
     } catch (err: any) {
-      console.error('Account creation error:', err.message);
+      console.error('Account creation error:', err);
       toast.error(err.message || 'Failed to create account');
     } finally {
       setIsProcessing(false);
@@ -232,7 +308,7 @@ const ClientList: React.FC<ClientListProps> = ({ onEdit }) => {
 
       toast.success('Credentials resent successfully');
     } catch (err: any) {
-      console.error('Error resending credentials:', err.message);
+      console.error('Error resending credentials:', err);
       toast.error(err.message || 'Failed to resend credentials');
     } finally {
       setIsProcessing(false);
@@ -241,12 +317,10 @@ const ClientList: React.FC<ClientListProps> = ({ onEdit }) => {
 
   const handleDropdownOpenChange = (open: boolean) => {
     if (!open && dropdownTriggerRef.current) {
-      // Move focus back to trigger when dropdown closes to prevent ARIA issues
       dropdownTriggerRef.current.focus();
     }
   };
 
-  // Paginate clients
   const startIndex = (currentPage - 1) * rowsPerPage;
   const endIndex = startIndex + rowsPerPage;
   const paginatedClients = clients.slice(startIndex, endIndex);
@@ -307,7 +381,7 @@ const ClientList: React.FC<ClientListProps> = ({ onEdit }) => {
             <TableRow>
               <TableCell colSpan={6} className="text-center text-red-600">
                 <p>{error}</p>
-                <Button onClick={() => window.location.reload()} className="mt-4">Retry</Button>
+                <Button onClick={() => fetchClients()} className="mt-4">Retry</Button>
               </TableCell>
             </TableRow>
           ) : paginatedClients.length === 0 ? (
@@ -323,17 +397,13 @@ const ClientList: React.FC<ClientListProps> = ({ onEdit }) => {
                 <TableCell>{client.email}</TableCell>
                 <TableCell>{client.phone}</TableCell>
                 <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        className={`rounded-full px-2.5 text-xs font-semibold ${getStatusColor(client.status)}`}
-                        disabled={isProcessing}
-                      >
-                        {client.status.charAt(0).toUpperCase() + client.status.slice(1)}
-                      </Button>
-                    </DropdownMenuTrigger>
-                  </DropdownMenu>
+                  <Button
+                    variant="ghost"
+                    className={`rounded-full px-2.5 text-xs font-semibold ${getStatusColor(client.status)}`}
+                    disabled={isProcessing}
+                  >
+                    {client.status.charAt(0).toUpperCase() + client.status.slice(1)}
+                  </Button>
                 </TableCell>
                 <TableCell>
                   <Badge
