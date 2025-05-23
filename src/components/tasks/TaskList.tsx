@@ -255,7 +255,12 @@ const TaskList: React.FC<TaskListProps> = ({
           ) : (
             paginatedTasks.map((task) => (
               <TableRow key={task.id}>
-                <TableCell className="font-medium">{task.title}</TableCell>
+                <TableCell className="font-medium">
+                  {task.title}
+                  <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                      {task.description}
+                    </p>
+                  </TableCell>
                 {isClient ? null : (
                   <TableCell>{getClientName(task.clientId)}</TableCell>
                 )}

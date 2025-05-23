@@ -272,7 +272,7 @@ const PaymentList: React.FC<PaymentListProps> = ({ payments, onEdit, onDelete })
                     </DropdownMenu>
                   ) : (
                     ['invoiced', 'pending', 'overdue'].includes(payment.status) && (
-                      <Button variant="outline" size="sm" onClick={() => initiatePayment(payment)} className="gap-1" disabled={isProcessing}>
+                      <Button variant="outline" size="sm" className="gap-1" disabled={isProcessing}>
                         <CreditCard className="h-3 w-3" /> Pay Now
                       </Button>
                     )
