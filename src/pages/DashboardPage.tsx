@@ -16,15 +16,38 @@ const Spinner = () => (
 const DashboardPage: React.FC = () => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
-  const clientId = user?.app_metadata?.clientId;
-console.log('User:', user);
+  let clientId = user?.app_metadata?.clientId;
+
+  console.log('User:', user);
+
   // Timeout utility
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
-  const timeout = new Promise<T>((_, reject) => {
-    setTimeout(() => reject(new Error('Operation timed out')), timeoutMs);
+  async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+    const timeout = new Promise<T>((_, reject) => {
+      setTimeout(() => reject(new Error('Operation timed out')), timeoutMs);
+    });
+    return Promise.race([promise, timeout]);
+  }
+
+  // Fetch clientId from users table if not in app_metadata
+  const { data: fetchedClientId, isLoading: clientIdLoading } = useQuery({
+    queryKey: ['clientId', user?.id],
+    queryFn: async () => {
+      if (isAdmin || clientId) return clientId;
+      const { data, error } = await withTimeout(
+        supabase.from('users').select('client_id').eq('id', user?.id).single(),
+        5000
+      );
+      if (error) throw new Error(`Failed to fetch client_id: ${error.message}`);
+      console.log('Fetched clientId from users table:', data?.client_id);
+      return data?.client_id || null;
+    },
+    enabled: !isAdmin && !clientId && !!user?.id,
   });
-  return Promise.race([promise, timeout]);
-}
+
+  // Use fetched clientId if available
+  if (!isAdmin && !clientId && fetchedClientId) {
+    clientId = fetchedClientId;
+  }
 
   // Admin dashboard queries
   const { data: totalClients, isLoading: clientsLoading } = useQuery({
@@ -698,59 +721,69 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {clientStatCards.map((stat) => (
-            <Card key={stat.title} className="card-hover">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-                <div className={`${stat.color} p-2 rounded-full`}>{stat.icon}</div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stat.value}</div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        {clientIdLoading ? (
+          <Spinner />
+        ) : !clientId ? (
+          <div className="text-center text-red-500">
+            Unable to load dashboard: User configuration error. Please contact support.
+          </div>
+        ) : (
+          <>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {clientStatCards.map((stat) => (
+                <Card key={stat.title} className="card-hover">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+                    <div className={`${stat.color} p-2 rounded-full`}>{stat.icon}</div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stat.value}</div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
 
-        <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
-          {/* My Tasks */}
-          <Card>
-            <CardHeader>
-              <CardTitle>My Tasks</CardTitle>
-              <CardDescription>Your current projects and their status</CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              {tasksLoading ? (
-                <Spinner />
-              ) : clientTasks && clientTasks.length > 0 ? (
-                <div className="divide-y">{clientTasks.map(renderClientTask)}</div>
-              ) : (
-                <div className="p-4 text-center text-muted-foreground">
-                  You don't have any tasks yet.
-                </div>
-              )}
-            </CardContent>
-          </Card>
+            <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
+              {/* My Tasks */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>My Tasks</CardTitle>
+                  <CardDescription>Your current projects and their status</CardDescription>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {tasksLoading ? (
+                    <Spinner />
+                  ) : clientTasks && clientTasks.length > 0 ? (
+                    <div className="divide-y">{clientTasks.map(renderClientTask)}</div>
+                  ) : (
+                    <div className="p-4 text-center text-muted-foreground">
+                      You don't have any tasks yet.
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
-          {/* Payments */}
-          <Card>
-            <CardHeader>
-              <CardTitle>My Payments</CardTitle>
-              <CardDescription>Your billing history and pending payments</CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              {paymentsLoading ? (
-                <Spinner />
-              ) : clientPayments && clientPayments.length > 0 ? (
-                <div className="divide-y">{clientPayments.map(renderClientInvoice)}</div>
-              ) : (
-                <div className="p-4 text-center text-muted-foreground">
-                  You don't have any payments yet.
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+              {/* Payments */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>My Payments</CardTitle>
+                  <CardDescription>Your billing history and pending payments</CardDescription>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {paymentsLoading ? (
+                    <Spinner />
+                  ) : clientPayments && clientPayments.length > 0 ? (
+                    <div className="divide-y">{clientPayments.map(renderClientInvoice)}</div>
+                  ) : (
+                    <div className="p-4 text-center text-muted-foreground">
+                      You don't have any payments yet.
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </>
+        )}
       </div>
     );
   }
