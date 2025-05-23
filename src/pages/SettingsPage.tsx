@@ -121,8 +121,10 @@ const SettingsPage: React.FC = () => {
       };
 
       const { error } = await supabase.from("users").upsert(updates);
+      const { err } = await supabase.from("clients").upsert(updates);
 
       if (error) throw error;
+      if (err) throw err;
 
       if (profileData.email !== user?.email) {
         const { error: authError } = await supabase.auth.updateUser({

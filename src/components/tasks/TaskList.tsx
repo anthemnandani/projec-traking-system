@@ -1,22 +1,35 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from "react";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Edit, Trash2, MoreVertical, ExternalLink } from 'lucide-react';
-import { format } from 'date-fns';
-import { Task, TaskStatus } from '@/types';
-import { supabase } from '@/integrations/supabase/client';
-import CustomPagination from '@/components/CustomPagination';
-import DeleteDialog from '../../components/DeleteDialog';
-import { debounce } from 'lodash';
-import { toast } from 'sonner';
-import { useAuth } from '@/context/AuthContext'; // Import useAuth
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Edit, Trash2, MoreVertical, ExternalLink } from "lucide-react";
+import { format } from "date-fns";
+import { Task, TaskStatus } from "@/types";
+import { supabase } from "@/integrations/supabase/client";
+import CustomPagination from "@/components/CustomPagination";
+import DeleteDialog from "../../components/DeleteDialog";
+import { debounce } from "lodash";
+import { toast } from "sonner";
+import { useAuth } from "@/context/AuthContext"; // Import useAuth
 
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number
+): Promise<T> {
   const timeout = new Promise<T>((_, reject) => {
     setTimeout(() => {
       console.warn(`Operation timed out after ${timeoutMs}ms`);
@@ -38,30 +51,60 @@ interface TaskListProps {
   onStatusChange?: (taskId: string, newStatus: TaskStatus) => Promise<void>;
 }
 
-const TaskListSkeleton: React.FC<{ rowsPerPage: number }> = ({ rowsPerPage }) => {
+const TaskListSkeleton: React.FC<{ rowsPerPage: number }> = ({
+  rowsPerPage,
+}) => {
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead><Skeleton className="h-6 w-24" /></TableHead>
-          <TableHead><Skeleton className="h-6 w-20" /></TableHead>
-          <TableHead><Skeleton className="h-6 w-28" /></TableHead>
-          <TableHead><Skeleton className="h-6 w-32" /></TableHead>
-          <TableHead><Skeleton className="h-6 w-28" /></TableHead>
-          <TableHead><Skeleton className="h-6 w-20" /></TableHead>
-          <TableHead className="text-right"><Skeleton className="h-6 w-16 ml-auto" /></TableHead>
+          <TableHead>
+            <Skeleton className="h-6 w-24" />
+          </TableHead>
+          <TableHead>
+            <Skeleton className="h-6 w-20" />
+          </TableHead>
+          <TableHead>
+            <Skeleton className="h-6 w-28" />
+          </TableHead>
+          <TableHead>
+            <Skeleton className="h-6 w-32" />
+          </TableHead>
+          <TableHead>
+            <Skeleton className="h-6 w-28" />
+          </TableHead>
+          <TableHead>
+            <Skeleton className="h-6 w-20" />
+          </TableHead>
+          <TableHead className="text-right">
+            <Skeleton className="h-6 w-16 ml-auto" />
+          </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {[...Array(rowsPerPage)].map((_, index) => (
           <TableRow key={index}>
-            <TableCell><Skeleton className="h-6 w-48" /></TableCell>
-            <TableCell><Skeleton className="h-6 w-32" /></TableCell>
-            <TableCell><Skeleton className="h-6 w-36" /></TableCell>
-            <TableCell><Skeleton className="h-6 w-16" /></TableCell>
-            <TableCell><Skeleton className="h-6 w-20" /></TableCell>
-            <TableCell><Skeleton className="h-6 w-24" /></TableCell>
-            <TableCell className="text-right"><Skeleton className="h-6 w-8 ml-auto" /></TableCell>
+            <TableCell>
+              <Skeleton className="h-6 w-48" />
+            </TableCell>
+            <TableCell>
+              <Skeleton className="h-6 w-32" />
+            </TableCell>
+            <TableCell>
+              <Skeleton className="h-6 w-36" />
+            </TableCell>
+            <TableCell>
+              <Skeleton className="h-6 w-16" />
+            </TableCell>
+            <TableCell>
+              <Skeleton className="h-6 w-20" />
+            </TableCell>
+            <TableCell>
+              <Skeleton className="h-6 w-24" />
+            </TableCell>
+            <TableCell className="text-right">
+              <Skeleton className="h-6 w-8 ml-auto" />
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>
@@ -69,7 +112,12 @@ const TaskListSkeleton: React.FC<{ rowsPerPage: number }> = ({ rowsPerPage }) =>
   );
 };
 
-const TaskList: React.FC<TaskListProps> = ({ tasks, onEdit, onDelete, onStatusChange }) => {
+const TaskList: React.FC<TaskListProps> = ({
+  tasks,
+  onEdit,
+  onDelete,
+  onStatusChange,
+}) => {
   const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
   const [isLoadingClients, setIsLoadingClients] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -78,7 +126,7 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, onEdit, onDelete, onStatusCh
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const { user } = useAuth(); // Get user from AuthContext
-  const isClient = user?.role === 'client'; // Check if user is a client
+  const isClient = user?.role === "client"; // Check if user is a client
 
   const debouncedSetDeleteDialogOpen = useCallback(
     debounce((open: boolean) => setDeleteDialogOpen(open), 300),
@@ -90,14 +138,14 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, onEdit, onDelete, onStatusCh
       setIsLoadingClients(true);
       try {
         const { data, error } = await withTimeout(
-          supabase.from('clients').select('id, name'),
+          supabase.from("clients").select("id, name"),
           5000
         );
         if (error) throw new Error(`Failed to fetch clients: ${error.message}`);
         setClients(data || []);
       } catch (error: any) {
-        console.error('Error fetching clients:', error);
-        toast.error(error.message || 'Failed to fetch clients');
+        console.error("Error fetching clients:", error);
+        toast.error(error.message || "Failed to fetch clients");
       } finally {
         setIsLoadingClients(false);
       }
@@ -111,51 +159,51 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, onEdit, onDelete, onStatusCh
   }, [tasks]);
 
   const confirmDelete = (taskId: string) => {
-    console.log('Opening delete dialog for task:', taskId);
+    console.log("Opening delete dialog for task:", taskId);
     setTaskToDelete(taskId);
     debouncedSetDeleteDialogOpen(true);
   };
 
   const handleDelete = async () => {
     if (!taskToDelete || !onDelete) {
-      console.warn('handleDelete called with no taskToDelete or onDelete');
+      console.warn("handleDelete called with no taskToDelete or onDelete");
       debouncedSetDeleteDialogOpen(false);
       return;
     }
     setIsProcessing(true);
     try {
-      console.log('Initiating delete for task:', taskToDelete);
+      console.log("Initiating delete for task:", taskToDelete);
       await withTimeout(onDelete(taskToDelete), 5000);
-      console.log('Delete operation successful for task:', taskToDelete);
+      console.log("Delete operation successful for task:", taskToDelete);
       debouncedSetDeleteDialogOpen(false);
       setTaskToDelete(null);
     } catch (error: any) {
-      console.error('Error deleting task:', error);
+      console.error("Error deleting task:", error);
       // Error toast is handled in TasksPage.tsx
       debouncedSetDeleteDialogOpen(false);
       setTaskToDelete(null);
     } finally {
       setIsProcessing(false);
-      console.log('Delete operation completed for task:', taskToDelete);
+      console.log("Delete operation completed for task:", taskToDelete);
     }
   };
 
   const getClientName = (clientId: string) => {
-    const client = clients.find(c => c.id === clientId);
-    return client ? client.name : 'Unknown';
+    const client = clients.find((c) => c.id === clientId);
+    return client ? client.name : "Unknown";
   };
 
   const getStatusColor = (status: TaskStatus) => {
     const colors: Record<TaskStatus, string> = {
-      requirements: 'bg-blue-100 text-blue-800 hover:bg-blue-200',
-      quote: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200',
-      approved: 'bg-green-100 text-green-800 hover:bg-green-200',
-      progress: 'bg-purple-100 text-purple-800 hover:bg-purple-200',
-      submitted: 'bg-orange-100 text-orange-800 hover:bg-orange-200',
-      feedback: 'bg-pink-100 text-pink-800 hover:bg-pink-200',
-      complete: 'bg-teal-100 text-teal-800 hover:bg-teal-200',
+      requirements: "bg-blue-100 text-blue-800 hover:bg-blue-200",
+      quote: "bg-yellow-100 text-yellow-800 hover:bg-yellow-200",
+      approved: "bg-green-100 text-green-800 hover:bg-green-200",
+      progress: "bg-purple-100 text-purple-800 hover:bg-purple-200",
+      submitted: "bg-orange-100 text-orange-800 hover:bg-orange-200",
+      feedback: "bg-pink-100 text-pink-800 hover:bg-pink-200",
+      complete: "bg-teal-100 text-teal-800 hover:bg-teal-200",
     };
-    return colors[status] || 'bg-gray-100 text-gray-800';
+    return colors[status] || "bg-gray-100 text-gray-800";
   };
 
   const startIndex = (currentPage - 1) * rowsPerPage;
@@ -187,14 +235,20 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, onEdit, onDelete, onStatusCh
             <TableHead>Due Date</TableHead>
             <TableHead>Estimated Hours</TableHead>
             <TableHead>Estimated Cost</TableHead>
+            <TableHead>Project Link</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead className="text-right">{isClient ? 'Project Link' : 'Actions'}</TableHead>
+            {isClient ? null : (
+              <TableHead className="text-right">Actions</TableHead>
+            )}
           </TableRow>
         </TableHeader>
         <TableBody>
           {paginatedTasks.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
+              <TableCell
+                colSpan={7}
+                className="text-center py-10 text-muted-foreground"
+              >
                 No tasks match the current filters.
               </TableCell>
             </TableRow>
@@ -202,35 +256,47 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, onEdit, onDelete, onStatusCh
             paginatedTasks.map((task) => (
               <TableRow key={task.id}>
                 <TableCell className="font-medium">{task.title}</TableCell>
-                {isClient ? null : <TableCell>{getClientName(task.clientId)}</TableCell>}
-                <TableCell>{task.dueDate ? format(task.dueDate, 'PPP') : '-'}</TableCell>
+                {isClient ? null : (
+                  <TableCell>{getClientName(task.clientId)}</TableCell>
+                )}
+                <TableCell>
+                  {task.dueDate ? format(task.dueDate, "PPP") : "-"}
+                </TableCell>
                 <TableCell>{task.estimatedHours}</TableCell>
                 <TableCell>${task.estimatedCost}</TableCell>
+                <TableCell className="">
+                  {task.project ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(task.project, "_blank")}
+                      className="gap-1"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      Open Project
+                    </Button>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
+                </TableCell>
                 <TableCell>
-                  <Badge variant="outline" className={getStatusColor(task.status)}>
+                  <Badge
+                    variant="outline"
+                    className={getStatusColor(task.status)}
+                  >
                     {task.status.charAt(0).toUpperCase() + task.status.slice(1)}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-right">
-                  {isClient ? (
-                    task.project ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => window.open(task.project, '_blank')}
-                        className="gap-1"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                        Open Project
-                      </Button>
-                    ) : (
-                      <span className="text-muted-foreground">-</span>
-                    )
-                  ) : (
-                    (onEdit || onDelete || onStatusChange) && (
+                {isClient ? null : (
+                  <TableCell className="text-right">
+                    {(onEdit || onDelete || onStatusChange) && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" disabled={isProcessing}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={isProcessing}
+                          >
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -241,15 +307,18 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, onEdit, onDelete, onStatusCh
                             </DropdownMenuItem>
                           )}
                           {onDelete && (
-                            <DropdownMenuItem onClick={() => confirmDelete(task.id)} className="text-destructive">
+                            <DropdownMenuItem
+                              onClick={() => confirmDelete(task.id)}
+                              className="text-destructive"
+                            >
                               <Trash2 className="mr-2 h-4 w-4" /> Delete
                             </DropdownMenuItem>
                           )}
                         </DropdownMenuContent>
                       </DropdownMenu>
-                    )
-                  )}
-                </TableCell>
+                    )}
+                  </TableCell>
+                )}
               </TableRow>
             ))
           )}
