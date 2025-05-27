@@ -36,15 +36,23 @@ export default function PaymentReminder({ clientId }: Props) {
     fetchReminders();
   }, [clientId]);
 
-  const upcoming = reminders.filter((r) => {
-    const due = parseISO(r.due_date);
-    const days = differenceInDays(due, new Date());
-    return days <= 7 && days >= 0;
-  });
+const upcoming = reminders.filter((r) => {
+  const due = parseISO(r.due_date);
+  const days = differenceInDays(due, new Date());
+  const status = r.status?.toLowerCase(); // just to be safe
+  
+  return (
+      days <= 7 && 
+      days >= 0 && 
+      (status === "pending" || status === "due")
+    );
+});
 
-  const overdue = reminders.filter((r) => {
+
+const overdue = reminders.filter((r) => {
     const due = parseISO(r.due_date);
-    return differenceInDays(new Date(), due) > 0;
+    const status = r.status?.toLowerCase(); // just to be safe
+    return (differenceInDays(new Date(), due) > 0 && status === "overdue");
   });
 
   if (upcoming.length === 0 && overdue.length === 0) return null;

@@ -32,6 +32,9 @@ const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({ open, onOpenChange,
   });
   const formRef = useRef<PaymentFormRef>(null);
 
+   const loginUser = localStorage.getItem('user');
+  const user = JSON.parse(loginUser);
+
   const fetchClients = useCallback(async () => {
     setIsLoadingClients(true);
     try {
@@ -121,67 +124,104 @@ const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({ open, onOpenChange,
     }
   }, [open, fetchClients, fetchPayment, isEditing]);
 
-  const onSubmit = async (values: {
-    clientId: string; taskId: string; amount: number; status: string; dueDate?: Date; invoiceNumber?: string; notes?: string;
-  }) => {
-    try {
-      const payload = {
-        client_id: values.clientId,
-        task_id: values.taskId,
-        amount: values.amount,
-        status: values.status,
-        due_date: values.dueDate ? values.dueDate.toISOString() : null,
-        invoice_number: values.invoiceNumber || null,
-        notes: values.notes || null,
-        updated_at: new Date().toISOString(),
+const onSubmit = async (values: {
+  clientId: string;
+  taskId: string;
+  amount: number;
+  status: string;
+  dueDate?: Date;
+  invoiceNumber?: string;
+  notes?: string;
+}) => {
+  try {
+    const payload = {
+      client_id: values.clientId,
+      task_id: values.taskId,
+      amount: values.amount,
+      status: values.status,
+      due_date: values.dueDate ? values.dueDate.toISOString() : null,
+      invoice_number: values.invoiceNumber || null,
+      notes: values.notes || null,
+      updated_at: new Date().toISOString(),
+    };
+
+    let newPayment: Payment;
+    if (isEditing) {
+      const { data, error } = await supabase
+        .from('payments')
+        .update(payload)
+        .eq('id', paymentId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      newPayment = {
+        id: paymentId!,
+        taskId: data.task_id,
+        clientId: data.client_id,
+        amount: data.amount,
+        status: data.status,
+        dueDate: data.due_date ? new Date(data.due_date) : undefined,
+        invoiceNumber: data.invoice_number,
+        invoicedAt: data.invoiced_at ? new Date(data.invoiced_at) : undefined,
+        receivedAt: data.received_at ? new Date(data.received_at) : undefined,
+        createdAt: new Date(data.created_at),
+        updatedAt: new Date(data.updated_at),
+        notes: data.notes,
       };
+    } else {
+      payload['created_at'] = new Date().toISOString();
+      const { data, error } = await supabase
+        .from('payments')
+        .insert([payload])
+        .select()
+        .single();
 
-      let newPayment: Payment;
-      if (isEditing) {
-        const { data, error } = await supabase.from('payments').update(payload).eq('id', paymentId).select().single();
-        if (error) throw error;
-        newPayment = {
-          id: paymentId!,
-          taskId: data.task_id,
-          clientId: data.client_id,
-          amount: data.amount,
-          status: data.status,
-          dueDate: data.due_date ? new Date(data.due_date) : undefined,
-          invoiceNumber: data.invoice_number,
-          invoicedAt: data.invoiced_at ? new Date(data.invoiced_at) : undefined,
-          receivedAt: data.received_at ? new Date(data.received_at) : undefined,
-          createdAt: new Date(data.created_at),
-          updatedAt: new Date(data.updated_at),
-          notes: data.notes,
-        };
-      } else {
-        payload['created_at'] = new Date().toISOString();
-        const { data, error } = await supabase.from('payments').insert([payload]).select().single();
-        if (error) throw error;
-        newPayment = {
-          id: data.id,
-          taskId: data.task_id,
-          clientId: data.client_id,
-          amount: data.amount,
-          status: data.status,
-          dueDate: data.due_date ? new Date(data.due_date) : undefined,
-          invoiceNumber: data.invoice_number,
-          invoicedAt: data.invoiced_at ? new Date(data.invoiced_at) : undefined,
-          receivedAt: data.received_at ? new Date(data.received_at) : undefined,
-          createdAt: new Date(data.created_at),
-          updatedAt: new Date(data.updated_at),
-          notes: data.notes,
-        };
-      }
+      if (error) throw error;
 
-      toast.success(isEditing ? 'Payment updated' : 'Payment added');
-      onPaymentSaved(newPayment);
-      onOpenChange(false);
-    } catch (err: any) {
-      console.error('Payment save error:', err.message);
-      toast.error('Failed to save payment');
+      newPayment = {
+        id: data.id,
+        taskId: data.task_id,
+        clientId: data.client_id,
+        amount: data.amount,
+        status: data.status,
+        dueDate: data.due_date ? new Date(data.due_date) : undefined,
+        invoiceNumber: data.invoice_number,
+        invoicedAt: data.invoiced_at ? new Date(data.invoiced_at) : undefined,
+        receivedAt: data.received_at ? new Date(data.received_at) : undefined,
+        createdAt: new Date(data.created_at),
+        updatedAt: new Date(data.updated_at),
+        notes: data.notes,
+      };
     }
-  };
+
+    // Optional: Get task and client names for the message
+    const clientName = clients.find((c) => c.id === values.clientId)?.name || 'Client';
+    const taskTitle = tasks.find((t) => t.id === values.taskId)?.title || 'Task';
+
+    // Send notification to client when admin creates or updates a payment
+    const { error: notifyError } = await supabase.from("notifications").insert({
+      receiver_id: values.clientId,
+      receiver_role: "client",
+      sender_role: "admin",
+      title: isEditing ? "Payment Updated" : "New Payment Recorded",
+      message: isEditing
+        ? `A payment for task "${taskTitle}" has been updated.`
+        : `A new payment of ₹${values.amount} has been recorded for task "${taskTitle}".`,
+      triggered_by: user.id,
+    });
+
+    if (notifyError) throw notifyError;
+
+    toast.success(isEditing ? 'Payment updated' : 'Payment added');
+    onPaymentSaved(newPayment);
+    onOpenChange(false);
+  } catch (err: any) {
+    console.error('Payment save error:', err.message);
+    toast.error('Failed to save payment');
+  }
+};
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

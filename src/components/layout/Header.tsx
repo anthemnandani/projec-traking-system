@@ -1,8 +1,8 @@
-import React from 'react';
-import { useAuth } from '@/context/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Bell, Menu } from 'lucide-react';
-import { useIsMobile } from '@/hooks/use-mobile';
+import React, { useEffect, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Bell, Menu } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,7 +11,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { supabase } from "@/integrations/supabase/client";
 
 interface HeaderProps {
   toggleSidebar: () => void;
@@ -21,14 +22,46 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ toggleSidebar, sidebarOpen }) => {
   const { user, logout } = useAuth();
   const isMobile = useIsMobile();
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const initials = user?.name
     ? user.name
-        .split(' ')
-        .map(n => n[0])
-        .join('')
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
         .toUpperCase()
-    : 'U';
+    : "U";
+
+useEffect(() => {
+  const fetchUnreadCount = async () => {
+    if (!user?.id) return;
+
+    let query = supabase
+      .from("notifications")
+      .select("*", { count: "exact", head: true })
+      .eq("read", false);
+
+    if (user.role === "admin") {
+      query = query.eq("receiver_role", "admin");
+    } else if (user.role === "client") {
+      query = query
+        .eq("receiver_id", user.clientId)
+        .eq("receiver_role", "client");
+    }
+
+    const { count, error } = await query;
+
+    if (error) {
+      console.error("Failed to fetch unread count:", error.message);
+      return;
+    }
+
+    setUnreadCount(count ?? 0);
+  };
+
+  fetchUnreadCount();
+}, [user]);
+
 
   return (
     <header className="bg-white shadow-sm z-10 h-16 flex items-center justify-between px-4 md:px-6">
@@ -53,21 +86,30 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, sidebarOpen }) => {
           )}
         </div>
       </div>
-      
+
       <div className="flex items-center space-x-4">
         <a href="/dashboard/notifications">
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5" />
-          <span className="absolute top-0 right-0 inline-block w-2 h-2 bg-red-500 rounded-full"></span>
-        </Button>
+          <Button variant="ghost" size="icon" className="relative">
+            <Bell className="h-5 w-5" />
+            {unreadCount > 0 && (
+              <span className="absolute top-0 right-0 inline-block w-2 h-2 bg-red-500 rounded-full"></span>
+            )}
+          </Button>
         </a>
-        
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative rounded-full h-8 w-8 p-0">
+            <Button
+              variant="ghost"
+              className="relative rounded-full h-8 w-8 p-0"
+            >
               <Avatar>
                 {user?.avatar_url ? (
-                  <AvatarImage src={user.avatar_url} alt="User Profile"  className="object-cover w-full h-full"/>
+                  <AvatarImage
+                    src={user.avatar_url}
+                    alt="User Profile"
+                    className="object-cover w-full h-full"
+                  />
                 ) : null}
                 <AvatarFallback className="bg-anthem-purple text-white">
                   {initials}
@@ -79,7 +121,9 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, sidebarOpen }) => {
             <DropdownMenuLabel>
               <div className="flex flex-col">
                 <span>{user?.name}</span>
-                <span className="text-xs text-muted-foreground">{user?.email}</span>
+                <span className="text-xs text-muted-foreground">
+                  {user?.email}
+                </span>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />

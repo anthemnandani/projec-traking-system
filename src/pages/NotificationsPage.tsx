@@ -1,87 +1,92 @@
-
-import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useEffect, useState } from 'react';
+import {
+  Card, CardContent, CardDescription, CardHeader, CardTitle,
+} from '@/components/ui/card';
 import { Notification } from '@/types';
 import { Bell, Check, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
-
-// Mock notifications data
-const mockNotifications: Notification[] = [
-  {
-    id: '1',
-    userId: 'admin1',
-    title: 'Task Updated',
-    message: 'Website Redesign task has been moved to "In Progress" status.',
-    read: false,
-    createdAt: new Date('2023-06-15T09:23:00')
-  },
-  {
-    id: '2',
-    userId: 'admin1',
-    title: 'New Client',
-    message: 'A new client "XYZ Corp" has been added to your client list.',
-    read: true,
-    createdAt: new Date('2023-06-14T14:45:00')
-  },
-  {
-    id: '3',
-    userId: 'admin1',
-    title: 'Payment Received',
-    message: 'Acme Corporation has made a payment of $2,500.00.',
-    read: false,
-    createdAt: new Date('2023-06-13T11:30:00')
-  },
-  {
-    id: '4',
-    userId: 'admin1',
-    title: 'Task Feedback',
-    message: 'Globex Industries has provided feedback on the Mobile App Development task.',
-    read: true,
-    createdAt: new Date('2023-06-12T16:20:00')
-  },
-  {
-    id: '5',
-    userId: 'admin1',
-    title: 'Payment Overdue',
-    message: 'Payment for Initech Solutions is now overdue by 7 days.',
-    read: false,
-    createdAt: new Date('2023-06-10T08:15:00')
-  }
-];
+import { format, formatDistanceToNow } from 'date-fns';
+import { supabase } from '../integrations/supabase/client'; // adjust path
+import { useAuth } from '@/context/AuthContext';
 
 const NotificationsPage: React.FC = () => {
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+   const { user } = useAuth();
+   const isAdmin = user?.role === "admin";
+   const isClient = user?.role === "client";
+  const userId = user.id;
+  const clientId = user.clientId;
+  console.log("login User:", user);
 
-  const markAsRead = (notificationId: string) => {
-    setNotifications(notifications.map(notification => 
-      notification.id === notificationId 
-        ? { ...notification, read: true } 
-        : notification
-    ));
-    toast.success('Notification marked as read');
-  };
+const fetchNotifications = async () => {
+  setLoading(true);
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map(notification => ({ ...notification, read: true })));
-    toast.success('All notifications marked as read');
-  };
+  let query = supabase.from("notifications").select("*").order("created_at", { ascending: false });
 
-  const formatNotificationTime = (date: Date) => {
-    const now = new Date();
-    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-    
-    if (diffInHours < 24) {
-      return format(date, 'h:mm a');
-    } else if (diffInHours < 48) {
-      return 'Yesterday';
-    } else {
-      return format(date, 'MMM d');
+  // Filter based on role
+  if (isAdmin) {
+    query = query.eq("receiver_role", "admin");
+  } else if (isClient) {
+    query = query.eq("receiver_role", "client").eq("receiver_id", clientId);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    toast.error("Failed to load notifications");
+  } else {
+    setNotifications(data);
+  }
+  setLoading(false);
+};
+
+  const markAsRead = async (id: string) => {
+    const { error } = await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('id', id);
+
+    if (!error) {
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+      );
+      toast.success('Notification marked as read');
     }
   };
 
-  const unreadCount = notifications.filter(notification => !notification.read).length;
+  const markAllAsRead = async () => {
+    const { error } = await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('read', false); // update all unread
+
+    if (!error) {
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      toast.success('All notifications marked as read');
+    }
+  };
+
+  const formatNotificationTime = (date: string) => {
+    const parsedDate = new Date(date);
+    const now = new Date();
+    const diffInHours = (now.getTime() - parsedDate.getTime()) / (1000 * 60 * 60);
+
+    if (diffInHours < 24) {
+      return format(parsedDate, 'h:mm a');
+    } else if (diffInHours < 48) {
+      return 'Yesterday';
+    } else {
+      return format(parsedDate, 'MMM d');
+    }
+  };
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -94,24 +99,24 @@ const NotificationsPage: React.FC = () => {
             </span>
           )}
         </div>
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           onClick={markAllAsRead}
           disabled={unreadCount === 0}
         >
           Mark all as read
         </Button>
       </div>
-      
+
       <Card>
         <CardHeader>
           <CardTitle>Notifications Center</CardTitle>
-          <CardDescription>
-            View all your recent notifications.
-          </CardDescription>
+          <CardDescription>View all your recent notifications.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {notifications.length === 0 ? (
+          {loading ? (
+            <p className="text-muted-foreground">Loading notifications...</p>
+          ) : notifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Bell className="w-12 h-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium">No notifications</h3>
@@ -120,11 +125,17 @@ const NotificationsPage: React.FC = () => {
           ) : (
             <div className="space-y-1">
               {notifications.map((notification) => (
-                <div 
+                <div
                   key={notification.id}
-                  className={`flex items-start p-4 rounded-lg ${notification.read ? 'bg-background' : 'bg-muted/50'}`}
+                  className={`flex items-start p-4 rounded-lg ${
+                    notification.read ? 'bg-background' : 'bg-muted/50'
+                  }`}
                 >
-                  <div className={`p-2 rounded-full mr-4 ${notification.read ? 'bg-muted' : 'bg-primary/10'}`}>
+                  <div
+                    className={`p-2 rounded-full mr-4 ${
+                      notification.read ? 'bg-muted' : 'bg-primary/10'
+                    }`}
+                  >
                     {notification.read ? (
                       <Check className="h-5 w-5 text-muted-foreground" />
                     ) : (
@@ -133,22 +144,27 @@ const NotificationsPage: React.FC = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <p className={`text-sm font-medium ${notification.read ? 'text-foreground' : 'text-primary'}`}>
+                      <p
+                        className={`text-sm font-medium ${
+                          notification.read ? 'text-foreground' : 'text-primary'
+                        }`}
+                      >
                         {notification.title}
                       </p>
                       <span className="text-xs text-muted-foreground flex items-center">
                         <Clock className="h-3 w-3 mr-1" />
-                        {formatNotificationTime(notification.createdAt)}
+                        {/* {formatNotificationTime(notification.created_at)} */}
+                        {formatDistanceToNow(notification.created_at, { addSuffix: true })}
                       </span>
                     </div>
                     <p className="text-sm text-muted-foreground mt-1">
                       {notification.message}
                     </p>
                     {!notification.read && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="mt-2 text-xs" 
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="mt-2 text-xs"
                         onClick={() => markAsRead(notification.id)}
                       >
                         Mark as read
