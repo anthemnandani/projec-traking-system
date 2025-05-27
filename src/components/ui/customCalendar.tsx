@@ -118,6 +118,7 @@ const SimpleDatePicker: React.FC<SimpleDatePickerProps> = ({
         >
           <div className="flex justify-between items-center mb-2">
             <button
+            type="button"
               onClick={() =>
                 setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))
               }
@@ -130,6 +131,7 @@ const SimpleDatePicker: React.FC<SimpleDatePickerProps> = ({
               {months[currentMonth.getMonth()]} {currentMonth.getFullYear()}
             </div>
             <button
+            type="button"
               onClick={() =>
                 setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))
               }
