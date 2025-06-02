@@ -20,10 +20,12 @@ export const Success = () => {
 
   const verifyPayment = async (sessionId) => {
     try {
-      const res = await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/payments/verify`,
-        { sessionId }
-      );
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/payments/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId }),
+        credentials: 'include'
+      });
       if (res.data.success) {
         setVerified(true);
       }
