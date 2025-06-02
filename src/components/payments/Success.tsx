@@ -20,14 +20,21 @@ export const Success = () => {
 
   const verifyPayment = async (sessionId) => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/payments/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId }),
-        credentials: 'include'
-      });
-      if (res.data.success) {
+      const res = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/payments/verify`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId }),
+          credentials: "include",
+        }
+      );
+      const data = await res.json();
+
+      if (data.success) {
         setVerified(true);
+      } else {
+        console.error("Verification failed:", data.message);
       }
     } catch (err) {
       console.error("Payment verification failed:", err.message);
