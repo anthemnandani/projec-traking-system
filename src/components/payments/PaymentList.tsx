@@ -271,7 +271,7 @@ const PaymentList: React.FC<PaymentListProps> = ({
   }, [paymentToDelete, debouncedSetDeleteDialogOpen, onDelete]);
 
   const handleCheckout = (payment: Payment) => {
-    fetch("https://projec-traking-system-backend.vercel.app/api/payments/create-checkout-session", {
+    fetch(`${import.meta.env.VITE_BACKEND_URL}/api/payments/create-checkout-session`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
