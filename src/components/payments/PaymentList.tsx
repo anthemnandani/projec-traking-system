@@ -36,7 +36,7 @@ import {
   CreditCard,
   CircleCheckBig,
 } from "lucide-react";
-import CustomPagination from "@/components/CustomPagination";
+import CustomPagination from "../../components/CustomPagination";
 import DeleteDialog from "../../components/DeleteDialog";
 import { debounce } from "lodash";
 import MarkPaidDialog from "./MarkPaidDialog";
@@ -63,6 +63,7 @@ interface PaymentListProps {
   payments: Payment[];
   onEdit: (paymentId: string) => void;
   onDelete: (paymentId: string) => void;
+  fetchPayments: () => Promise<void>;
 }
 
 const SkeletonRow: React.FC<{ rowsPerPage: number }> = ({ rowsPerPage }) => (
@@ -119,7 +120,6 @@ const PaymentList: React.FC<PaymentListProps> = ({
   );
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
-  const isClient = user?.role === "client";
   const clientId = user?.clientId;
 
   const debouncedSetDeleteDialogOpen = useMemo(
@@ -137,7 +137,8 @@ const PaymentList: React.FC<PaymentListProps> = ({
     setMarkPaidDialogOpen(false);
   };
 
-  const onMarkedPaid = () => {
+  const onMarkedPaid = async () => {
+    await fetchPayments();
     toast.success("Payment updated!");
   };
 
@@ -154,8 +155,8 @@ const PaymentList: React.FC<PaymentListProps> = ({
           { data: clientData, error: clientError },
           { data: taskData, error: taskError },
         ] = await Promise.all([
-          withTimeout(supabase.from("clients").select("id, name"), 5000),
-          withTimeout(supabase.from("tasks").select("id, title"), 5000),
+          withTimeout(supabase.from("clients").select("id, name").eq("is_deleted", false), 5000),
+          withTimeout(supabase.from("tasks").select("id, title").eq("is_deleted", false), 5000),
         ]);
         if (clientError) throw new Error(`Clients: ${clientError.message}`);
         if (taskError) throw new Error(`Tasks: ${taskError.message}`);
@@ -187,11 +188,6 @@ const PaymentList: React.FC<PaymentListProps> = ({
     },
     [tasks]
   );
-
-  // const initiatePayment = useCallback((payment: Payment) => {
-  //   setSelectedPayment(payment);
-  //   setPaymentDialogOpen(true);
-  // }, []);
 
   const filteredPayments = useMemo(() => {
     if (isAdmin || !clientId) {
@@ -258,7 +254,7 @@ const PaymentList: React.FC<PaymentListProps> = ({
       // Optimistic update
       onDelete(paymentToDelete);
       const { error } = await withTimeout(
-        supabase.from("payments").delete().eq("id", paymentToDelete),
+        supabase.from("payments").update({is_deleted: 'TRUE'}).eq("id", paymentToDelete),
         5000
       );
       if (error) throw error;
@@ -274,71 +270,29 @@ const PaymentList: React.FC<PaymentListProps> = ({
     }
   }, [paymentToDelete, debouncedSetDeleteDialogOpen, onDelete]);
 
-  const generateInvoice = useCallback(async (paymentId: string) => {
-    setIsProcessing(true);
-    try {
-      const invoiceNumber = `INV-${new Date().getFullYear()}-${Math.floor(
-        Math.random() * 10000
-      )
-        .toString()
-        .padStart(4, "0")}`;
-      const { error } = await withTimeout(
-        supabase
-          .from("payments")
-          .update({
-            invoice_number: invoiceNumber,
-            status: "invoiced",
-            invoiced_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", paymentId),
-        5000
-      );
-      if (error) throw error;
-      toast.success("Invoice generated");
-    } catch (error: any) {
-      console.error("Generate invoice error:", error.message);
-      toast.error("Failed to generate invoice");
-    } finally {
-      setIsProcessing(false);
-    }
-  }, []);
-
-  const handlePayNow = useCallback((payment: Payment) => {
-    setIsProcessing(true);
-    try {
-      window.open(
-        `https://www.paypal.com/checkoutnow?token=demo-${payment.id}`,
-        "_blank"
-      );
-      toast.success("Redirecting to PayPal");
-      setTimeout(() => {
-        supabase
-          .from("payments")
-          .update({
-            status: "received",
-            received_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", payment.id)
-          .then(({ error }) => {
-            if (error) throw error;
-            toast.success("Payment completed");
-          })
-          .catch((error) => {
-            console.error("Payment error:", error.message);
-            toast.error("Payment failed");
-          })
-          .finally(() => setIsProcessing(false));
-        setPaymentDialogOpen(false);
-        setSelectedPayment(null);
-      }, 3000);
-    } catch (error: any) {
-      console.error("PayPal error:", error.message);
-      toast.error("Failed to initiate payment");
-      setIsProcessing(false);
-    }
-  }, []);
+  const handleCheckout = (payment: Payment) => {
+    fetch("https://projec-traking-system-backend.vercel.app/api/payments/create-checkout-session", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        items: [{ name: "Anthem InfoTech Pvt Ltd", price: payment.amount, quantity: 1 }],
+        paymentId: payment.id,
+      }),
+    })
+      .then((res) => {
+        if (res.ok) return res.json();
+        return res.json().then((json) => Promise.reject(json));
+      })
+      .then(({ url }) => {
+        window.location = url;
+      })
+      .catch((e) => {
+        console.error(e.error);
+         toast.error("Checkout failed");
+      });
+  };
 
   if (isLoading) return <SkeletonRow rowsPerPage={rowsPerPage} />;
 
@@ -395,6 +349,7 @@ const PaymentList: React.FC<PaymentListProps> = ({
                         variant="outline"
                         size="sm"
                         className="gap-1"
+                        onClick={()=>handleCheckout(payment)}
                         disabled={isProcessing}
                       >
                         <CreditCard className="h-3 w-3" /> Pay Now
@@ -404,48 +359,60 @@ const PaymentList: React.FC<PaymentListProps> = ({
                 )}
 
                 <TableCell className="text-right">
-                  {isAdmin
-                    ?  <DropdownMenu>
+                  {isAdmin ? (
+                    <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" disabled={isProcessing}><MoreVertical className="h-4 w-4" /></Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={isProcessing}
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onEdit(payment.id)} disabled={isProcessing}>
+                        <DropdownMenuItem
+                          onClick={() => onEdit(payment.id)}
+                          disabled={isProcessing}
+                        >
                           <Edit className="mr-2 h-4 w-4" /> Edit
                         </DropdownMenuItem>
-                        {/* <DropdownMenuItem onClick={() => generateInvoice(payment.id)} disabled={isProcessing}>
-                          <FileText className="mr-2 h-4 w-4" /> Generate Invoice
-                        </DropdownMenuItem> */}
-                        <DropdownMenuItem className="text-destructive" onClick={() => confirmDelete(payment.id)} disabled={isProcessing}>
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => confirmDelete(payment.id)}
+                          disabled={isProcessing}
+                        >
                           <Trash2 className="mr-2 h-4 w-4" /> Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
-                    : ["invoiced", "pending", "overdue"].includes(
-                        payment.status
-                      ) && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              disabled={isProcessing}
-                            >
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              className="text-green-500"
-                              disabled={isProcessing}
-                              onClick={() => openMarkPaidDialog(payment.id)}
-                            >
-                              <CircleCheckBig className="mr-2 h-4 w-4" /> Mark
-                              as paid
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
+                  ) : (
+                    ["invoiced", "pending", "overdue"].includes(
+                      payment.status
+                    ) && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={isProcessing}
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            className="text-green-500"
+                            disabled={isProcessing}
+                            onClick={() => openMarkPaidDialog(payment.id)}
+                          >
+                            <CircleCheckBig className="mr-2 h-4 w-4" /> Mark as
+                            paid
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )
+                  )}
                 </TableCell>
               </TableRow>
             ))
@@ -471,7 +438,7 @@ const PaymentList: React.FC<PaymentListProps> = ({
         open={markPaidDialogOpen}
         onClose={closeMarkPaidDialog}
         paymentId={selectedPaymentId}
-        onMarkedPaid={onMarkedPaid}
+        onSuccess={onMarkedPaid}
       />
       {paymentDialogOpen && selectedPayment && (
         <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
