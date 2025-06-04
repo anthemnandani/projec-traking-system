@@ -1,23 +1,32 @@
-import React, { useImperativeHandle, forwardRef } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
+import React, { useImperativeHandle, forwardRef } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import {
-  Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
-import { ClientStatus } from '@/types';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ClientStatus } from "@/types";
 
 const clientSchema = z.object({
-  name: z.string().min(1, 'Client name is required'),
-  email: z.string().email('Invalid email address'),
-  phone: z.string().min(1, 'Phone number is required'),
-  address: z.string().min(1, 'Address is required'),
-  status: z.enum(['active', 'idle', 'gone']),
+  name: z.string().min(1, "Client name is required"),
+  email: z.string().email("Invalid email address"),
+  phone: z.string().min(1, "Phone number is required"),
+  address: z.string().min(1, "Address is required"),
+  status: z.enum(["active", "idle", "gone"]),
   notes: z.string().optional(),
 });
 
@@ -39,12 +48,12 @@ const ClientForm = forwardRef<ClientFormRef, ClientFormProps>(
     {
       onSubmit,
       defaultValues = {
-        name: '',
-        email: '',
-        phone: '',
-        address: '',
-        status: 'active',
-        notes: '',
+        name: "",
+        email: "",
+        phone: "",
+        address: "",
+        status: "active",
+        notes: "",
       },
       isLoading = false,
     },
@@ -63,7 +72,7 @@ const ClientForm = forwardRef<ClientFormRef, ClientFormProps>(
     // Debug form errors
     React.useEffect(() => {
       if (Object.keys(form.formState.errors).length > 0) {
-        console.log('ClientForm validation errors:', form.formState.errors);
+        console.log("ClientForm validation errors:", form.formState.errors);
       }
     }, [form.formState.errors]);
 
@@ -78,7 +87,11 @@ const ClientForm = forwardRef<ClientFormRef, ClientFormProps>(
                 <FormItem>
                   <FormLabel>Client Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter client name" {...field} disabled={isLoading} />
+                    <Input
+                      placeholder="Enter client name"
+                      {...field}
+                      disabled={isLoading}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -91,7 +104,11 @@ const ClientForm = forwardRef<ClientFormRef, ClientFormProps>(
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="client@example.com" {...field} disabled={isLoading} />
+                    <Input
+                      placeholder="client@example.com"
+                      {...field}
+                      disabled={isLoading}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -104,7 +121,22 @@ const ClientForm = forwardRef<ClientFormRef, ClientFormProps>(
                 <FormItem>
                   <FormLabel>Phone</FormLabel>
                   <FormControl>
-                    <Input placeholder="Phone number" {...field} disabled={isLoading} />
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={13}
+                      minLength={10}
+                      placeholder="Phone number"
+                      className="border border-gray-300 rounded-md p-2 w-full text-sm"
+                      {...field}
+                      onChange={(e) => {
+                        // Allow only digits
+                        const value = e.target.value.replace(/\D/g, "");
+                        field.onChange(value);
+                      }}
+                      disabled={isLoading}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -144,7 +176,11 @@ const ClientForm = forwardRef<ClientFormRef, ClientFormProps>(
                 <FormItem>
                   <FormLabel>Address</FormLabel>
                   <FormControl>
-                    <Input placeholder="Client address" {...field} disabled={isLoading} />
+                    <Input
+                      placeholder="Client address"
+                      {...field}
+                      disabled={isLoading}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -157,7 +193,11 @@ const ClientForm = forwardRef<ClientFormRef, ClientFormProps>(
                 <FormItem>
                   <FormLabel>Notes</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Additional notes" {...field} disabled={isLoading} />
+                    <Textarea
+                      placeholder="Additional notes"
+                      {...field}
+                      disabled={isLoading}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -165,13 +205,13 @@ const ClientForm = forwardRef<ClientFormRef, ClientFormProps>(
             />
           </div>
           {/* Hidden submit button for accessibility */}
-          <button type="submit" style={{ display: 'none' }} />
+          <button type="submit" style={{ display: "none" }} />
         </form>
       </Form>
     );
   }
 );
 
-ClientForm.displayName = 'ClientForm';
+ClientForm.displayName = "ClientForm";
 
 export default ClientForm;

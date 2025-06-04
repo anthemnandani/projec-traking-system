@@ -144,57 +144,100 @@ const SettingsPage: React.FC = () => {
     }
   };
 
-  const handlePasswordReset = async (e: React.FormEvent) => {
-    e.preventDefault();
+const handlePasswordReset = async (e: React.FormEvent) => {
+  e.preventDefault(); // ⛔ prevents full page reload
 
-    if (!newPassword || !confirmPassword) {
-      toast.error("Please fill in both password fields");
-      return;
+  try {
+    if (!newPassword || !confirmPassword) return toast.error('All fields are required');
+    if (newPassword !== confirmPassword) return toast.error('Passwords do not match');
+    if (newPassword.length < 6) return toast.error('Minimum 6 characters');
+
+    setIsSubmittingPassword(true);
+
+    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/update-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: user.id,
+        newPassword,
+        role: user.role,
+        clientId: user.clientId,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || 'Failed to reset password');
     }
 
-    if (newPassword.length < 6) {
-      toast.error("Password must be at least 6 characters");
-      return;
-    }
+    toast.success(result.message);
+    setNewPassword('');
+    setConfirmPassword('');
+  } catch (err: any) {
+    toast.error(err.message);
+  } finally {
+    setIsSubmittingPassword(false);
+  }
+};
 
-    if (newPassword !== confirmPassword) {
-      toast.error("Passwords do not match");
-      return;
-    }
+  // const handlePasswordReset = async (e: React.FormEvent) => {
+  //   e.preventDefault();
 
-    try {
-      setIsSubmittingPassword(true);
+  //   if (!newPassword || !confirmPassword) {
+  //     toast.error("Please fill in both password fields");
+  //     return;
+  //   }
 
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
+  //   if (newPassword.length < 6) {
+  //     toast.error("Password must be at least 6 characters");
+  //     return;
+  //   }
 
-      if (error) {
-        throw new Error(error.message);
-      }
+  //   if (newPassword !== confirmPassword) {
+  //     toast.error("Passwords do not match");
+  //     return;
+  //   }
 
-      if (user.role === "client") {
-        await supabase.from("notifications").insert({
-          receiver_id: user?.clientId,
-          receiver_role: "client",
-          sender_role: "admin",
-          type: "client",
-          title: "password Updated",
-          message:
-            "Password has been updated successfully. if you did not initiate this change, please contact support immediately.",
-          triggered_by: user?.id,
-        });
-      }
+  //   try {
+  //     setIsSubmittingPassword(true);
 
-      toast.success("Password updated successfully");
-      setNewPassword("");
-      setConfirmPassword("");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to reset password");
-    } finally {
-      setIsSubmittingPassword(false);
-    }
-  };
+  //     const { error } = await supabase.auth.updateUser({
+  //       password: newPassword,
+  //     });
+
+  //     if (error) {
+  //       throw new Error(error.message);
+  //     }
+
+  //     const { err } = await supabase
+  //       .from("users")
+  //       .update({ password: newPassword }) 
+  //       .eq("id", user.id);
+        
+  //     console.log("error: ", err);
+  //     if (user.role === "client") {
+  //       await supabase.from("notifications").insert({
+  //         receiver_id: user?.clientId,
+  //         receiver_role: "client",
+  //         sender_role: "admin",
+  //         type: "client",
+  //         title: "password Updated",
+  //         message:
+  //           "Password has been updated successfully. if you did not initiate this change, please contact support immediately.",
+  //         triggered_by: user?.id,
+  //       });
+  //     }
+
+  //     toast.success("Password updated successfully");
+  //     setNewPassword("");
+  //     setConfirmPassword("");
+  //   } catch (err: any) {
+  //     toast.error(err.message || "Failed to reset password");
+  //   } finally {
+  //     setIsSubmittingPassword(false);
+  //   }
+  // };
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
