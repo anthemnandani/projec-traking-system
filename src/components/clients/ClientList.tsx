@@ -563,70 +563,88 @@ const ClientList: React.FC<ClientListProps> = ({ onEdit, onAddClient }) => {
         isProcessing={isProcessing}
       />
       {createAccountDialogOpen && (
-        <Dialog
-          open={createAccountDialogOpen}
-          onOpenChange={setCreateAccountDialogOpen}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create Client Account</DialogTitle>
-              <DialogDescription>
-                Create an account for{" "}
-                <strong>{clientToCreateAccount?.name}</strong>. Credentials will
-                be emailed to <strong>{clientToCreateAccount?.email}</strong>.
-              </DialogDescription>
-            </DialogHeader>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+          <div className="bg-white w-full max-w-md px-6 py-4 rounded-lg shadow-xl relative">
+            <button
+              onClick={() => setCreateAccountDialogOpen(false)}
+              className="absolute right-4 top-4 text-gray-500 hover:text-gray-800"
+            >
+              ✕
+            </button>
+
+            {/* Modal header */}
+            <h2 className="text-xl font-semibold mb-1">
+              Create Client Account
+            </h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Create an account for{" "}
+              <strong>{clientToCreateAccount?.name}</strong>. Credentials will
+              be emailed to <strong>{clientToCreateAccount?.email}</strong>.
+            </p>
+
+            {/* Form fields */}
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium" htmlFor="username">
+                <label
+                  className="text-sm font-medium block mb-1"
+                  htmlFor="email"
+                >
                   Email
                 </label>
-                <Input
-                  id="username"
+                <input
+                  id="email"
                   value={clientToCreateAccount?.email || ""}
                   disabled
+                  className="w-full border rounded-lg px-3 py-2 text-sm bg-gray-100 cursor-not-allowed"
                 />
               </div>
+
               <div className="relative">
-                <label className="text-sm font-medium" htmlFor="password">
+                <label
+                  className="text-sm font-medium block mb-1"
+                  htmlFor="password"
+                >
                   Password
                 </label>
-                <Input
+                <input
                   id="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="Temporary password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isProcessing}
-                  className="pr-10"
+                  className="w-full border rounded-lg px-3 py-2 text-sm pr-10"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-2 top-[38px] text-gray-500 hover:text-gray-800"
+                  className="absolute right-3 top-[38px] text-gray-500 hover:text-gray-800"
                   tabIndex={-1}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
             </div>
-            <DialogFooter>
-              <Button
-                variant="outline"
+
+            {/* Footer buttons */}
+            <div className="mt-6 flex justify-end space-x-2">
+              <button
+                className="px-4 py-2 text-sm rounded-md border border-gray-300 hover:bg-gray-100 disabled:opacity-50"
                 onClick={() => setCreateAccountDialogOpen(false)}
                 disabled={isProcessing}
               >
                 Cancel
-              </Button>
-              <Button
+              </button>
+              <button
+                className="px-4 py-2 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
                 onClick={handleCreateAccount}
                 disabled={!password || isProcessing}
               >
                 Create & Send
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

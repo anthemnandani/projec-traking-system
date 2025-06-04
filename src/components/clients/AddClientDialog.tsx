@@ -153,52 +153,107 @@ const AddClientDialog: React.FC<AddClientDialogProps> = ({
       setLoading(false);
     }
   };
-
+  if (!open) return null;
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] w-full max-w-lg max-h-[95vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
-            {isEditing ? "Edit Client" : "Add New Client"}
-          </DialogTitle>
-          <DialogDescription>
-            {isEditing
-              ? "Update the client information below."
-              : "Fill in the client information to add a new client."}
-          </DialogDescription>
-        </DialogHeader>
-        <ClientForm
-          ref={formRef}
-          onSubmit={onSubmit}
-          defaultValues={defaultValues}
-          isLoading={loading}
-        />
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={loading}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={() => {
-              console.log("Submitting ClientForm");
-              formRef.current?.submit();
-            }}
-            disabled={loading}
-          >
-            {loading
-              ? isEditing
-                ? "Updating..."
-                : "Adding..."
-              : isEditing
-              ? "Update Client"
-              : "Add Client"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <>
+      <div className="fixed inset-0 top-[-5vh] bg-black bg-opacity-80 z-50 max-h-[105vh] flex items-center justify-center">
+        <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[100vh] overflow-y-auto px-6 py-4">
+          <div className="flex justify-between items-center relative">
+            <div className="mb-4">
+              <h2 className="text-xl font-semibold">
+                {isEditing ? "Edit Client" : "Add New Client"}
+              </h2>
+              <p className="text-sm text-gray-500">
+                {isEditing
+                  ? "Update the client information below."
+                  : "Fill in the client information to add a new client."}
+              </p>
+            </div>
+            <button
+              onClick={() => onOpenChange(false)}
+              disabled={loading}
+              className="absolute right-4 top-4 text-gray-500 hover:text-gray-800"
+            >
+              ✕
+            </button>
+          </div>
+
+          <ClientForm
+            ref={formRef}
+            onSubmit={onSubmit}
+            defaultValues={defaultValues}
+            isLoading={loading}
+          />
+
+          <div className="flex justify-end mt-6 gap-2">
+            <button
+              className="px-4 py-2 rounded border shadow font-semibold border-gray-300 text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+              onClick={() => onOpenChange(false)}
+              disabled={loading}
+            >
+              Cancel
+            </button>
+            <button
+              className="px-4 py-2 rounded font-semibold shadow bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+              onClick={() => formRef.current?.submit()}
+              disabled={loading}
+            >
+              {loading
+                ? isEditing
+                  ? "Updating..."
+                  : "Adding..."
+                : isEditing
+                ? "Update Client"
+                : "Add Client"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+    // <Dialog open={open} onOpenChange={onOpenChange}>
+    //   <DialogContent className="sm:max-w-[600px] w-full max-w-lg max-h-[95vh] overflow-y-auto">
+    //     <DialogHeader>
+    //       <DialogTitle>
+    //         {isEditing ? "Edit Client" : "Add New Client"}
+    //       </DialogTitle>
+    //       <DialogDescription>
+    //         {isEditing
+    //           ? "Update the client information below."
+    //           : "Fill in the client information to add a new client."}
+    //       </DialogDescription>
+    //     </DialogHeader>
+    //     <ClientForm
+    //       ref={formRef}
+    //       onSubmit={onSubmit}
+    //       defaultValues={defaultValues}
+    //       isLoading={loading}
+    //     />
+    //     <DialogFooter>
+    //       <Button
+    //         variant="outline"
+    //         onClick={() => onOpenChange(false)}
+    //         disabled={loading}
+    //       >
+    //         Cancel
+    //       </Button>
+    //       <Button
+    //         onClick={() => {
+    //           console.log("Submitting ClientForm");
+    //           formRef.current?.submit();
+    //         }}
+    //         disabled={loading}
+    //       >
+    //         {loading
+    //           ? isEditing
+    //             ? "Updating..."
+    //             : "Adding..."
+    //           : isEditing
+    //           ? "Update Client"
+    //           : "Add Client"}
+    //       </Button>
+    //     </DialogFooter>
+    //   </DialogContent>
+    // </Dialog>
   );
 };
 
