@@ -2,20 +2,14 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/context/AuthContext";
 
 export const Success = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [verified, setVerified] = useState(false);
-  const { user } = useAuth();
-  console.log("User:", user);
-  const userId = user?.clientId;
 
   useEffect(() => {
-    if(!user) return;
-
     const handleVerification = async () => {
       const sessionId = searchParams.get("session_id");
       const paymentId = searchParams.get("paymentId");
@@ -55,7 +49,7 @@ export const Success = () => {
         const taskTitle = taskData?.title || "Unknown Task";
         const clientName = clientData?.name || "Unknown Client";
 
-        await verifyPayment(sessionId, taskTitle, clientName, user.clientId);
+        await verifyPayment(sessionId, taskTitle, clientName);
       } catch (err) {
         console.error("Verification error:", err.message);
         setLoading(false);
@@ -63,16 +57,16 @@ export const Success = () => {
     };
 
     handleVerification();
-  }, [user]);
+  }, []);
 
-  const verifyPayment = async (sessionId, taskTitle, clientName, userId) => {
+  const verifyPayment = async (sessionId, taskTitle, clientName) => {
     try {
       const res = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/api/payments/verify`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sessionId, taskTitle, clientName, userId }),
+          body: JSON.stringify({ sessionId, taskTitle, clientName }),
           credentials: "include",
         }
       );
