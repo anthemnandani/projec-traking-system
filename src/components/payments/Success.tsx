@@ -11,9 +11,11 @@ export const Success = () => {
   const [verified, setVerified] = useState(false);
   const { user } = useAuth();
   console.log("User:", user);
-  const userId = user.clientId;
+  const userId = user?.clientId;
 
   useEffect(() => {
+    if(!user) return;
+
     const handleVerification = async () => {
       const sessionId = searchParams.get("session_id");
       const paymentId = searchParams.get("paymentId");
@@ -53,7 +55,7 @@ export const Success = () => {
         const taskTitle = taskData?.title || "Unknown Task";
         const clientName = clientData?.name || "Unknown Client";
 
-        await verifyPayment(sessionId, taskTitle, clientName, userId);
+        await verifyPayment(sessionId, taskTitle, clientName, user.clientId);
       } catch (err) {
         console.error("Verification error:", err.message);
         setLoading(false);
@@ -61,7 +63,7 @@ export const Success = () => {
     };
 
     handleVerification();
-  }, []);
+  }, [user]);
 
   const verifyPayment = async (sessionId, taskTitle, clientName, userId) => {
     try {
