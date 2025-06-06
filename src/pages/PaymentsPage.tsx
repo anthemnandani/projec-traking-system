@@ -9,6 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Payment } from '@/types';
 import { toast } from 'sonner';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 
 interface PaymentFilterForm {
   statuses: string[];
@@ -29,8 +30,20 @@ const PaymentsPage: React.FC = () => {
     dueDateEnd: null,
   });
   const { user } = useAuth();
-  const isAdmin = user?.app_metadata?.role === 'admin' || user?.role === 'admin'; // Support both metadata structures
-  let clientId = user?.app_metadata?.clientId;
+  const isAdmin = user?.role === 'admin';
+  let clientId = user?.clientId;
+  const [searchParams] = useSearchParams();
+  const nagivate = useNavigate();
+  const initialStatus = searchParams.get('status'); 
+
+  useEffect(() => {
+  if (initialStatus) {
+    setFilters((prev) => ({
+      ...prev,
+      statuses: [initialStatus],
+    }));
+  }
+}, [initialStatus]);
 
   // Fallback to fetch clientId from users table if needed
   const fetchClientId = useCallback(async (userId: string) => {
@@ -184,7 +197,8 @@ const PaymentsPage: React.FC = () => {
   // Handle filter application
   const handleApplyFilters = useCallback((newFilters: PaymentFilterForm) => {
     setFilters(newFilters);
-  }, []);
+    fetchPayments();
+  }, [fetchPayments]);
 
   // Log user for debugging
   useEffect(() => {
@@ -196,12 +210,12 @@ const PaymentsPage: React.FC = () => {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Payments</h1>
         <div className="flex space-x-2">
-          <Button variant="outline" size="sm" onClick={() => setIsFilterDialogOpen(true)}>
+          <Button variant="outline" size="sm" onClick={() => {setIsFilterDialogOpen(true); nagivate('/dashboard/payments') }}>
             <Filter className="mr-2 h-4 w-4" />
             Filter
           </Button>
           {isAdmin && (
-            <Button onClick={() => setOpen(true)} className="gap-1">
+            <Button onClick={() => {setOpen(true); setPaymentToEdit(null)}} className="gap-1">
               <Plus className="h-4 w-4" /> Add Payment
             </Button>
           )}

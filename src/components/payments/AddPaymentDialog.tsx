@@ -144,7 +144,7 @@ const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({
           taskId: "",
           amount: 0,
           status: "due",
-          dueDate: undefined,
+          dueDate: null,
           invoiceNumber: "",
           notes: "",
         };
@@ -311,31 +311,6 @@ const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({
         </div>
       )}
     </>
-    // <Dialog open={open} onOpenChange={onOpenChange}>
-    //   <DialogContent className="sm:max-w-[600px]">
-    //     <DialogHeader>
-    //       <DialogTitle>{isEditing ? 'Edit Payment' : 'Add Payment'}</DialogTitle>
-    //       <DialogDescription>{isEditing ? 'Update payment details.' : 'Create a new payment record.'}</DialogDescription>
-    //     </DialogHeader>
-    //     <PaymentForm
-    //       ref={formRef}
-    //       onSubmit={onSubmit}
-    //       defaultValues={defaultValues}
-    //       clients={clients}
-    //       tasks={tasks}
-    //       isLoadingClients={isLoadingClients}
-    //       isLoadingTasks={isLoadingTasks}
-    //       isEditing={isEditing}
-    //       onClientChange={fetchTasks}
-    //     />
-    //     <DialogFooter>
-    //       <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-    //       <Button onClick={() => formRef.current?.submit()} disabled={isLoadingClients || isLoadingTasks}>
-    //         {isEditing ? 'Update' : 'Add'}
-    //       </Button>
-    //     </DialogFooter>
-    //   </DialogContent>
-    // </Dialog>
   );
 };
 

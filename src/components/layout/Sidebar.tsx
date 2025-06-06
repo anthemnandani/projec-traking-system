@@ -28,7 +28,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
     <aside
       className={cn(
         "bg-sidebar text-sidebar-foreground flex flex-col fixed inset-y-0 left-0 z-40 transition-all duration-300 ease-in-out",
-        isOpen ? "w-64" : "w-20",
+        isOpen ? "w-72" : "w-20",
         "md:relative"
       )}
     >
@@ -44,16 +44,17 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
               <img
                 src="/images/6123bc56-fe6c-4d47-a531-d13782c5f5c0.png"
                 alt="Anthem Infotech"
-                className="h-10"
+                className="w-full"
               />
             </div>
           ) : (
-            <img
-              src="/images/6123bc56-fe6c-4d47-a531-d13782c5f5c0.png"
-              alt="Anthem Infotech"
-              className="h-9 w-9 object-contain"
-              style={{ objectPosition: "left" }}
-            />
+            // <img
+            //   src="/images/6123bc56-fe6c-4d47-a531-d13782c5f5c0.png"
+            //   alt="Anthem Infotech"
+            //   className="h-9 w-9 object-contain"
+            //   style={{ objectPosition: "left" }}
+            // />
+            null
           )}
         </div>
         <Button
@@ -77,7 +78,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
       <div className="flex-1 overflow-y-auto py-4">
         <nav className="px-2 space-y-1">
           <NavLink
-            to="/dashboard"
+            to="/dashboard" title={!isOpen ? "Dashboard" : undefined}
             end
             className={({ isActive }) =>
               cn(
@@ -95,7 +96,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
 
           {isAdmin && (
             <NavLink
-              to="/dashboard/clients"
+              to="/dashboard/clients" title={!isOpen?"Clients" : undefined}
               className={({ isActive }) =>
                 cn(
                   "flex items-center px-4 py-2 text-sm font-medium rounded-md",
@@ -112,7 +113,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
           )}
 
           <NavLink
-            to="/dashboard/tasks"
+            to="/dashboard/tasks" title={!isOpen ? "Tasks": undefined}
             className={({ isActive }) =>
               cn(
                 "flex items-center px-4 py-2 text-sm font-medium rounded-md",
@@ -128,7 +129,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
           </NavLink>
 
           <NavLink
-            to="/dashboard/payments"
+            to="/dashboard/payments" title={!isOpen ? "Payments" : undefined}
             className={({ isActive }) =>
               cn(
                 "flex items-center px-4 py-2 text-sm font-medium rounded-md",
@@ -144,7 +145,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
           </NavLink>
 
           <NavLink
-            to="/dashboard/notifications"
+            to="/dashboard/notifications" title={!isOpen ? "Notifications" :undefined}
             className={({ isActive }) =>
               cn(
                 "flex items-center px-4 py-2 text-sm font-medium rounded-md",
@@ -160,7 +161,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
           </NavLink>
 
           <NavLink
-            to="/dashboard/settings"
+            to="/dashboard/settings" title={!isOpen ? "Settings" : undefined}
             className={({ isActive }) =>
               cn(
                 "flex items-center px-4 py-2 text-sm font-medium rounded-md",
@@ -179,7 +180,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
 
       <div className="px-2 py-4 border-t border-sidebar-border">
         <Button
-          variant="ghost"
+          variant="ghost" title={!isOpen ? "Logout" : undefined}
           onClick={logout}
           className={cn(
             "flex items-center w-full px-4 py-2 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-md",

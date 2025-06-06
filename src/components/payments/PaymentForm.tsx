@@ -111,12 +111,12 @@ const PaymentForm = forwardRef<PaymentFormRef, PaymentFormProps>(
     useEffect(() => {
       if (
         selectedClientId &&
-        selectedClientId !== prevClientIdRef.current && // Only trigger if clientId actually changed
+        selectedClientId !== prevClientIdRef.current &&
         !isEditing &&
         !isLoadingTasks
       ) {
         handleClientChange(selectedClientId);
-        prevClientIdRef.current = selectedClientId; // Update previous clientId
+        prevClientIdRef.current = selectedClientId; 
       }
     }, [selectedClientId, handleClientChange, isEditing, isLoadingTasks]);
 

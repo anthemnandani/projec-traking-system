@@ -1,5 +1,6 @@
 import React from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useNavigate } from "react-router-dom";
 import {
   Card,
   CardContent,
@@ -31,8 +32,9 @@ const Spinner = () => (
 
 const DashboardPage: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const isAdmin = user?.role === "admin";
-  let clientId = user?.app_metadata?.clientId;
+  let clientId = user?.clientId;
   console.log("User:", user);
 
   // Timeout utility
@@ -46,13 +48,13 @@ const DashboardPage: React.FC = () => {
     return Promise.race([promise, timeout]);
   }
 
-  // Fetch clientId from users table if not in app_metadata
+  // Fetch clientId from users table
   const { data: fetchedClientId, isLoading: clientIdLoading } = useQuery({
     queryKey: ["clientId", user?.id],
     queryFn: async () => {
       if (isAdmin || clientId) return clientId;
       const { data, error } = await withTimeout(
-        supabase.from("users").select("client_id").eq("id", user?.id).single(),
+        supabase.from("users").select("client_id").eq("id", user?.id).eq("is_deleted", false).single(),
         5000
       );
       if (error) throw new Error(`Failed to fetch client_id: ${error.message}`);
@@ -72,7 +74,7 @@ const DashboardPage: React.FC = () => {
     queryKey: ["totalClients"],
     queryFn: async () => {
       const { count, error } = await withTimeout(
-        supabase.from("clients").select("*", { count: "exact", head: true }),
+        supabase.from("clients").select("*", { count: "exact", head: true }).eq("is_deleted", false),
         5000
       );
       if (error)
@@ -89,7 +91,7 @@ const DashboardPage: React.FC = () => {
       const { count, error } = await withTimeout(
         supabase
           .from("tasks")
-          .select("*", { count: "exact", head: true })
+          .select("*", { count: "exact", head: true }).eq("is_deleted", false)
           .neq("status", "complete"),
         5000
       );
@@ -107,7 +109,7 @@ const DashboardPage: React.FC = () => {
       const { count, error } = await withTimeout(
         supabase
           .from("tasks")
-          .select("*", { count: "exact", head: true })
+          .select("*", { count: "exact", head: true }).eq("is_deleted", false)
           .eq("status", "complete"),
         5000
       );
@@ -126,7 +128,7 @@ const DashboardPage: React.FC = () => {
         const { count, error } = await withTimeout(
           supabase
             .from("payments")
-            .select("*", { count: "exact", head: true })
+            .select("*", { count: "exact", head: true }).eq("is_deleted", false)
             .in("status", ["pending", "due", "invoiced"]),
           5000
         );
@@ -146,7 +148,7 @@ const DashboardPage: React.FC = () => {
         const { count, error } = await withTimeout(
           supabase
             .from("payments")
-            .select("*", { count: "exact", head: true })
+            .select("*", { count: "exact", head: true }).eq("is_deleted", false)
             .eq("status", "overdue"),
           5000
         );
@@ -169,7 +171,7 @@ const DashboardPage: React.FC = () => {
       const { data, error } = await withTimeout(
         supabase
           .from("clients")
-          .select("status")
+          .select("status").eq("is_deleted", false)
           .in("status", ["active", "idle", "gone"]),
         5000
       );
@@ -199,7 +201,7 @@ const DashboardPage: React.FC = () => {
       const { data, error } = await withTimeout(
         supabase
           .from("tasks")
-          .select("status")
+          .select("status").eq("is_deleted", false)
           .in("status", [
             "requirements",
             "quote",
@@ -253,7 +255,7 @@ const DashboardPage: React.FC = () => {
       const { data, error } = await withTimeout(
         supabase
           .from("payments")
-          .select("status")
+          .select("status").eq("is_deleted", false)
           .in("status", ["due", "invoiced", "pending", "received", "overdue"]),
         5000
       );
@@ -279,7 +281,7 @@ const DashboardPage: React.FC = () => {
     queryFn: async () => {
       if (!clientId) return [];
       const { data, error } = await withTimeout(
-        supabase.from("tasks").select("*").eq("client_id", clientId),
+        supabase.from("tasks").select("*").eq("client_id", clientId).eq("is_deleted", false),
         5000
       );
       if (error)
@@ -302,7 +304,7 @@ const DashboardPage: React.FC = () => {
     queryFn: async () => {
       if (!clientId) return [];
       const { data, error } = await withTimeout(
-        supabase.from("payments").select("*").eq("client_id", clientId),
+        supabase.from("payments").select("*").eq("client_id", clientId).eq("is_deleted", false),
         5000
       );
       if (error)
@@ -336,22 +338,16 @@ const DashboardPage: React.FC = () => {
         trend: "neutral",
         icon: <Users className="h-5 w-5 text-blue-500" />,
         color: "bg-blue-50",
+        link: '/dashboard/clients'
       },
       {
-        title: "Active Tasks",
+        title: "In progress Tasks",
         value: activeTasks || 0,
         change: 0,
         trend: "neutral",
         icon: <FileText className="h-5 w-5 text-purple-500" />,
         color: "bg-purple-50",
-      },
-      {
-        title: "Pending Payments",
-        value: pendingPayments || 0,
-        change: 0,
-        trend: "neutral",
-        icon: <DollarSign className="h-5 w-5 text-green-500" />,
-        color: "bg-green-50",
+        link: '/dashboard/tasks?status=progress'
       },
       {
         title: "Completed Tasks",
@@ -360,6 +356,16 @@ const DashboardPage: React.FC = () => {
         trend: "neutral",
         icon: <CheckCircle className="h-5 w-5 text-amber-500" />,
         color: "bg-amber-50",
+        link: '/dashboard/tasks?status=complete'
+      },
+       {
+        title: "Pending Payments",
+        value: pendingPayments || 0,
+        change: 0,
+        trend: "neutral",
+        icon: <DollarSign className="h-5 w-5 text-green-500" />,
+        color: "bg-green-50",
+        link: '/dashboard/payments?status=pending'
       },
       {
         title: "Overdue Payments",
@@ -368,6 +374,7 @@ const DashboardPage: React.FC = () => {
         trend: "neutral",
         icon: <AlertCircle className="h-5 w-5 text-red-500" />,
         color: "bg-red-50",
+        link: '/dashboard/payments?status=overdue'
       },
     ],
     [
@@ -600,7 +607,7 @@ const DashboardPage: React.FC = () => {
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {statCards.map((stat) => (
-            <Card key={stat.title} className="card-hover">
+            <Card key={stat.title} className="card-hover hover:cursor-pointer" onClick={()=>navigate(stat.link)}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
                   {stat.title}

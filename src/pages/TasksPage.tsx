@@ -15,6 +15,7 @@ import { Task, TaskStatus } from "@/types";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 interface TaskFilter {
   statuses: TaskStatus[];
@@ -36,6 +37,17 @@ const TasksPage: React.FC = () => {
     dueDateEnd: null,
   });
   const { user } = useAuth();
+  const nagivate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialStatus = searchParams.get("status");
+  useEffect(() => {
+    if (initialStatus) {
+      setFilters((prev) => ({
+        ...prev,
+        statuses: [initialStatus],
+      }));
+    }
+  }, [initialStatus]);
 
   const fetchTasks = useCallback(async () => {
     try {
@@ -392,7 +404,10 @@ const TasksPage: React.FC = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setIsFilterDialogOpen(true)}
+            onClick={() => {
+              setIsFilterDialogOpen(true);
+              nagivate("/dashboard/tasks");
+            }}
           >
             <Filter className="mr-2 h-4 w-4" />
             Filter

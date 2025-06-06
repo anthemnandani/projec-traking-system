@@ -25,7 +25,9 @@ export default function PaymentReminder({ clientId }: Props) {
     const fetchReminders = async () => {
       const { data, error } = await supabase
         .from("payments")
-        .select("id, due_date, amount, status, clients(name)")
+        .select(
+          "id, due_date, amount, status, clients(name),tasks (title), invoice_number"
+        )
         .eq("client_id", clientId);
 
       if (error) console.error("Error fetching reminders", error);
@@ -36,36 +38,36 @@ export default function PaymentReminder({ clientId }: Props) {
     fetchReminders();
   }, [clientId]);
 
-const upcoming = reminders.filter((r) => {
-  const due = parseISO(r.due_date);
-  const days = differenceInDays(due, new Date());
-  const status = r.status?.toLowerCase(); // just to be safe
-  
-  return (
-      days <= 10 && 
-      (status === "pending" || status === "invoiced")
-    );
-});
-
-
-const overdue = reminders.filter((r) => {
+  const upcoming = reminders.filter((r) => {
     const due = parseISO(r.due_date);
-    const status = r.status?.toLowerCase(); // just to be safe
-    return (differenceInDays(new Date(), due) > 0 && status === "overdue");
+    const days = differenceInDays(due, new Date());
+    const status = r.status?.toLowerCase();
+    const invoice_number = r.invoice_number;
+
+    return days <= 10 && (status === "pending" || status === "invoiced");
+  });
+
+  const overdue = reminders.filter((r) => {
+    const due = parseISO(r.due_date);
+    const status = r.status?.toLowerCase();
+    const invoice_number = r.invoice_number;
+    return differenceInDays(new Date(), due) > 0 && status === "overdue";
   });
 
   if (upcoming.length === 0 && overdue.length === 0) return null;
-console.log("Upcoming reminders:", upcoming);
-    console.log("Overdue reminders:", overdue);
+  console.log("Upcoming reminders:", upcoming);
+  console.log("Overdue reminders:", overdue);
 
   return (
-<div className="col-span-1 lg:col-span-2">
+    <div className="col-span-1 lg:col-span-2">
       <div className="rounded-xl border bg-white shadow-sm">
         <div className="p-6 border-b">
           <h2 className="text-lg font-semibold">Payment Reminders</h2>
-          <p className="text-sm text-muted-foreground">Alerts for upcoming and overdue payments</p>
+          <p className="text-sm text-muted-foreground">
+            Alerts for upcoming and overdue payments
+          </p>
         </div>
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-6">
           {overdue.map((r) => (
             <div key={r.id} className="flex items-start space-x-4">
               <div className="bg-red-100 p-2 rounded-full">
@@ -73,12 +75,32 @@ console.log("Upcoming reminders:", upcoming);
               </div>
               <div className="flex-1">
                 <div className="flex justify-between">
-                  <p className="font-medium text-red-600">Overdue: ${r.amount}</p>
-                  <span className="text-sm font-medium text-red-500">
-                    Due {format(parseISO(r.due_date), "dd MMM yyyy")}
-                  </span>
+                  <div>
+                    <p className="font-medium text-red-600">
+                      Overdue: ${r.amount}
+                    </p>
+                    <p className="text-sm text-muted-foreground w-4/5">
+                      This payment was due on{" "}
+                      <strong>
+                        {format(parseISO(r.due_date), "dd MMM yyyy")}
+                      </strong>{" "}
+                      and hasn’t been received yet. Please complete the payment
+                      as soon as possible to avoid delays or service
+                      disruptions.
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-sm font-medium text-red-500">
+                      Due {format(parseISO(r.due_date), "dd MMM yyyy")}
+                    </span>
+                    <p className="text-sm text-gray-500">
+                      For: {r.tasks?.title}
+                    </p>
+                    <p className="text-md text-gray-500 font-semibold">
+                      Invoice #{r.invoice_number}
+                    </p>
+                  </div>
                 </div>
-                <p className="text-sm text-muted-foreground">Please make the payment as soon as possible.</p>
               </div>
             </div>
           ))}
@@ -90,12 +112,31 @@ console.log("Upcoming reminders:", upcoming);
               </div>
               <div className="flex-1">
                 <div className="flex justify-between">
-                  <p className="font-medium text-yellow-700">Upcoming: ${r.amount}</p>
-                  <span className="text-sm font-medium text-yellow-600">
-                    Due {format(parseISO(r.due_date), "dd MMM yyyy")}
-                  </span>
+                  <div>
+                    <p className="font-medium text-yellow-700">
+                      Upcoming: ${r.amount}
+                    </p>
+                    <p className="text-sm text-muted-foreground w-4/5">
+                      Payment for <strong>{r.tasks?.title}</strong> is due on{" "}
+                      <strong>
+                        {format(parseISO(r.due_date), "dd MMM yyyy")}
+                      </strong>
+                      . Please ensure it's processed before the due date to stay
+                      on schedule.
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-sm font-medium text-yellow-600">
+                      Due {format(parseISO(r.due_date), "dd MMM yyyy")}
+                    </span>
+                    <p className="text-sm text-gray-500">
+                      For: {r.tasks?.title}
+                    </p>
+                    <p className="text-md text-gray-500 font-semibold">
+                      Invoice #{r.invoice_number}
+                    </p>
+                  </div>
                 </div>
-                 <p className="text-sm text-muted-foreground">Kindly ensure payment by the due date.</p>
               </div>
             </div>
           ))}

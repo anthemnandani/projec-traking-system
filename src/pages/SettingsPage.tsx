@@ -54,11 +54,11 @@ const SettingsPage: React.FC = () => {
 
         if (data) {
           setProfileData({
-            name: data.name || user.user_metadata?.name || "",
+            name: data.name || user?.name || "",
             email: data.email || user.email || "",
             phone: data.phone || "",
             role: data.role || "",
-            avatar_url: data.avatar_url || user.user_metadata?.avatar_url || "",
+            avatar_url: data.avatar_url || user?.avatar_url || "",
           });
         }
       };
@@ -144,42 +144,47 @@ const SettingsPage: React.FC = () => {
     }
   };
 
-const handlePasswordReset = async (e: React.FormEvent) => {
-  e.preventDefault(); // ⛔ prevents full page reload
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  try {
-    if (!newPassword || !confirmPassword) return toast.error('All fields are required');
-    if (newPassword !== confirmPassword) return toast.error('Passwords do not match');
-    if (newPassword.length < 6) return toast.error('Minimum 6 characters');
+    try {
+      if (!newPassword || !confirmPassword)
+        return toast.error("All fields are required");
+      if (newPassword !== confirmPassword)
+        return toast.error("Passwords do not match");
+      if (newPassword.length < 6) return toast.error("Minimum 6 characters");
 
-    setIsSubmittingPassword(true);
+      setIsSubmittingPassword(true);
 
-    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/update-password`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId: user.id,
-        newPassword,
-        role: user.role,
-        clientId: user.clientId,
-      }),
-    });
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/auth/update-password`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.id,
+            newPassword,
+            role: user.role,
+            clientId: user.clientId,
+          }),
+        }
+      );
 
-    const result = await response.json();
+      const result = await response.json();
 
-    if (!response.ok) {
-      throw new Error(result.error || 'Failed to reset password');
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to reset password");
+      }
+
+      toast.success(result.message);
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setIsSubmittingPassword(false);
     }
-
-    toast.success(result.message);
-    setNewPassword('');
-    setConfirmPassword('');
-  } catch (err: any) {
-    toast.error(err.message);
-  } finally {
-    setIsSubmittingPassword(false);
-  }
-};
+  };
 
   // const handlePasswordReset = async (e: React.FormEvent) => {
   //   e.preventDefault();
@@ -212,9 +217,9 @@ const handlePasswordReset = async (e: React.FormEvent) => {
 
   //     const { err } = await supabase
   //       .from("users")
-  //       .update({ password: newPassword }) 
+  //       .update({ password: newPassword })
   //       .eq("id", user.id);
-        
+
   //     console.log("error: ", err);
   //     if (user.role === "client") {
   //       await supabase.from("notifications").insert({
@@ -364,12 +369,23 @@ const handlePasswordReset = async (e: React.FormEvent) => {
                         <input
                           id="phone"
                           name="phone"
-                          type="number"
+                          inputMode="numeric"
+                          type="text"
+                          pattern="[0-9]*"
                           className="border border-gray-100 rounded-md p-2 w-full"
                           maxLength={12}
                           minLength={10}
                           value={profileData.phone}
-                          onChange={handleProfileChange}
+                          onChange={(e) => {
+                            const digitsOnly = e.target.value.replace(
+                              /\D/g,
+                              ""
+                            );
+                            setProfileData((prev) => ({
+                              ...prev,
+                              phone: digitsOnly,
+                            }));
+                          }}
                         />
                       </div>
                       <div className="space-y-2">

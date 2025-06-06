@@ -14,6 +14,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useNotification } from "@/context/NotificationContext";
+import { useNavigate } from "react-router-dom";
 
 interface HeaderProps {
   toggleSidebar: () => void;
@@ -23,6 +24,7 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ toggleSidebar, sidebarOpen }) => {
   const { user, logout } = useAuth();
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const { unreadCount } = useNotification();
  const initials = user?.name
     ? user.name
@@ -57,14 +59,12 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, sidebarOpen }) => {
       </div>
 
       <div className="flex items-center space-x-4">
-        <a href="/dashboard/notifications">
-          <Button variant="ghost" size="icon" className="relative">
+        <Button variant="ghost" size="icon" className="relative" onClick={()=>navigate("/dashboard/notifications")}>
             <Bell className="h-5 w-5" />
             {unreadCount > 0 && (
               <span className="absolute top-0 right-0 inline-block w-2 h-2 bg-red-500 rounded-full"></span>
             )}
           </Button>
-        </a>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
