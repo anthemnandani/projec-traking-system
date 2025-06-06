@@ -48,7 +48,6 @@ interface TaskListProps {
   tasks: Task[];
   onEdit?: (task: Task) => void;
   onDelete?: (taskId: string) => Promise<void>;
-  onStatusChange?: (taskId: string, newStatus: TaskStatus) => Promise<void>;
 }
 
 const TaskListSkeleton: React.FC<{ rowsPerPage: number }> = ({
@@ -116,7 +115,6 @@ const TaskList: React.FC<TaskListProps> = ({
   tasks,
   onEdit,
   onDelete,
-  onStatusChange,
 }) => {
   const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
   const [isLoadingClients, setIsLoadingClients] = useState(true);
@@ -294,7 +292,7 @@ const TaskList: React.FC<TaskListProps> = ({
                 </TableCell>
                 {isClient ? null : (
                   <TableCell className="text-right">
-                    {(onEdit || onDelete || onStatusChange) && (
+                    {(onEdit || onDelete) && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button

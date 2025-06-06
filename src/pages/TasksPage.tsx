@@ -15,7 +15,7 @@ import { Task, TaskStatus } from "@/types";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 
 interface TaskFilter {
   statuses: TaskStatus[];
@@ -25,6 +25,8 @@ interface TaskFilter {
 }
 
 const TasksPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false);
@@ -37,17 +39,26 @@ const TasksPage: React.FC = () => {
     dueDateEnd: null,
   });
   const { user } = useAuth();
-  const nagivate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const initialStatus = searchParams.get("status");
+
   useEffect(() => {
-    if (initialStatus) {
-      setFilters((prev) => ({
-        ...prev,
-        statuses: [initialStatus],
-      }));
-    }
-  }, [initialStatus]);
+    const timer = setTimeout(() => {
+      const statusParam = searchParams.get("status");
+      const clientId = searchParams.get("clientId");
+      const dueStart = searchParams.get("dueDateStart");
+      const dueEnd = searchParams.get("dueDateEnd");
+
+      const urlFilters: TaskFilter = {
+        statuses: statusParam ? [statusParam as TaskStatus] : [],
+        clientId: clientId || null,
+        dueDateStart: dueStart ? new Date(dueStart) : null,
+        dueDateEnd: dueEnd ? new Date(dueEnd) : null,
+      };
+
+      setFilters(urlFilters);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchParams]);
 
   const fetchTasks = useCallback(async () => {
     try {
@@ -368,30 +379,6 @@ const TasksPage: React.FC = () => {
     setIsAddDialogOpen(true);
   };
 
-  const handleStatusChange = async (taskId: string, newStatus: TaskStatus) => {
-    try {
-      const taskToUpdate = tasks.find((task) => task.id === taskId);
-
-      if (!taskToUpdate) throw new Error("Task not found");
-
-      const updatedTask = {
-        ...taskToUpdate,
-        status: newStatus,
-        updatedAt: new Date(),
-        ...(newStatus === "complete"
-          ? { completedAt: new Date() }
-          : { completedAt: undefined }),
-      };
-
-      await handleUpdateTask(updatedTask);
-    } catch (error: any) {
-      console.error("Error updating task status:", error);
-      toast.error(
-        error.message || "Failed to update task status. Please try again."
-      );
-    }
-  };
-
   const handleApplyFilters = (newFilters: TaskFilter) => {
     setFilters(newFilters);
   };
@@ -406,7 +393,7 @@ const TasksPage: React.FC = () => {
             size="sm"
             onClick={() => {
               setIsFilterDialogOpen(true);
-              nagivate("/dashboard/tasks");
+              navigate("/dashboard/tasks");
             }}
           >
             <Filter className="mr-2 h-4 w-4" />
@@ -449,9 +436,6 @@ const TasksPage: React.FC = () => {
               tasks={tasks}
               onEdit={user?.role === "admin" ? handleEditTask : undefined}
               onDelete={user?.role === "admin" ? handleDeleteTask : undefined}
-              onStatusChange={
-                user?.role === "admin" ? handleStatusChange : undefined
-              }
             />
           )}
         </CardContent>

@@ -19,6 +19,8 @@ interface PaymentFilterForm {
 }
 
 const PaymentsPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [paymentToEdit, setPaymentToEdit] = useState<string | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -32,18 +34,21 @@ const PaymentsPage: React.FC = () => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   let clientId = user?.clientId;
-  const [searchParams] = useSearchParams();
-  const nagivate = useNavigate();
-  const initialStatus = searchParams.get('status'); 
 
-  useEffect(() => {
-  if (initialStatus) {
-    setFilters((prev) => ({
-      ...prev,
-      statuses: [initialStatus],
-    }));
-  }
-}, [initialStatus]);
+useEffect(() => {
+  const timer = setTimeout(() => {
+    const statusParam = searchParams.get('status');
+    if (statusParam) {
+      setFilters((prev) => ({
+        ...prev,
+        statuses: [statusParam],
+      }));
+    }
+  }, 500);
+
+  return () => clearTimeout(timer); 
+}, [searchParams]);
+
 
   // Fallback to fetch clientId from users table if needed
   const fetchClientId = useCallback(async (userId: string) => {
@@ -197,8 +202,7 @@ const PaymentsPage: React.FC = () => {
   // Handle filter application
   const handleApplyFilters = useCallback((newFilters: PaymentFilterForm) => {
     setFilters(newFilters);
-    fetchPayments();
-  }, [fetchPayments]);
+  }, []);
 
   // Log user for debugging
   useEffect(() => {
@@ -210,7 +214,7 @@ const PaymentsPage: React.FC = () => {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Payments</h1>
         <div className="flex space-x-2">
-          <Button variant="outline" size="sm" onClick={() => {setIsFilterDialogOpen(true); nagivate('/dashboard/payments') }}>
+          <Button variant="outline" size="sm" onClick={() => {setIsFilterDialogOpen(true); navigate('/dashboard/payments')}}>
             <Filter className="mr-2 h-4 w-4" />
             Filter
           </Button>

@@ -92,7 +92,7 @@ const DashboardPage: React.FC = () => {
         supabase
           .from("tasks")
           .select("*", { count: "exact", head: true }).eq("is_deleted", false)
-          .neq("status", "complete"),
+          .eq("status", "progress"),
         5000
       );
       if (error)
@@ -129,7 +129,7 @@ const DashboardPage: React.FC = () => {
           supabase
             .from("payments")
             .select("*", { count: "exact", head: true }).eq("is_deleted", false)
-            .in("status", ["pending", "due", "invoiced"]),
+            .eq("status", "pending"),
           5000
         );
         if (error)
@@ -391,13 +391,13 @@ const DashboardPage: React.FC = () => {
     if (!clientTasks || !clientPayments) return [];
 
     const activeTasksCount = clientTasks.filter(
-      (task) => task.status !== "complete"
+      (task) => task.status === "progress"
     ).length;
     const completedTasksCount = clientTasks.filter(
       (task) => task.status === "complete"
     ).length;
     const pendingPaymentsCount = clientPayments.filter((payment) =>
-      ["pending", "due", "invoiced"].includes(payment.status)
+      ["pending"].includes(payment.status)
     ).length;
     const overduePaymentsCount = clientPayments.filter(
       (payment) => payment.status === "overdue"
@@ -405,28 +405,32 @@ const DashboardPage: React.FC = () => {
 
     return [
       {
-        title: "Your Active Tasks",
+        title: "Your under progress Tasks",
         value: activeTasksCount,
         icon: <FileText className="h-5 w-5 text-purple-500" />,
         color: "bg-purple-50",
+        link: '/dashboard/tasks?status=progress',
       },
       {
         title: "Completed Tasks",
         value: completedTasksCount,
         icon: <CheckCircle className="h-5 w-5 text-amber-500" />,
         color: "bg-amber-50",
+        link: '/dashboard/tasks?status=complete',
       },
       {
         title: "Pending Payments",
         value: pendingPaymentsCount,
         icon: <DollarSign className="h-5 w-5 text-green-500" />,
         color: "bg-green-50",
+        link: '/dashboard/payments?status=pending',
       },
       {
         title: "Overdue Payments",
         value: overduePaymentsCount,
         icon: <AlertCircle className="h-5 w-5 text-red-500" />,
         color: "bg-red-50",
+        link: '/dashboard/payments?status=overdue',
       },
     ];
   }, [clientTasks, clientPayments]);
@@ -851,7 +855,7 @@ const DashboardPage: React.FC = () => {
           <>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               {clientStatCards.map((stat) => (
-                <Card key={stat.title} className="card-hover">
+                <Card key={stat.title} className="card-hover hover:cursor-pointer" onClick={()=>navigate(stat.link)}>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
                       {stat.title}
