@@ -12,6 +12,7 @@ import {
   Bell,
   Settings,
   LogOut,
+  X,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -28,7 +29,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
     <aside
       className={cn(
         "bg-sidebar text-sidebar-foreground flex flex-col fixed inset-y-0 left-0 z-40 transition-all duration-300 ease-in-out",
-        isOpen ? "w-72" : "w-20",
+        isOpen ? "w-72 max-sm:w-full" : "w-20 max-sm:w-0",
         "md:relative"
       )}
     >
@@ -40,7 +41,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
           )}
         >
           {isOpen ? (
-            <div className="flex items-center">
+            <div className="flex items-center w-[95%]">
               <img
                 src="/images/6123bc56-fe6c-4d47-a531-d13782c5f5c0.png"
                 alt="Anthem Infotech"
@@ -65,13 +66,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
             "text-sidebar-foreground hover:bg-sidebar-accent",
             !isOpen && "hidden md:flex"
           )}
-        >
+        > 
           <ChevronLeft
+          size={48}
             className={cn(
-              "h-4 w-4 transition-transform",
+              "h-4 w-4 transition-transform max-sm:hidden flex",
               !isOpen && "rotate-180"
             )}
           />
+          <X className="max-sm:flex hidden" size={48}/>
         </Button>
       </div>
 
