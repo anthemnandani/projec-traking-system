@@ -1,73 +1,98 @@
-# Welcome to your Lovable project
+# Project Tracking System
 
-## Project info
+A web-based **Project Tracking System** designed to manage projects (tasks), clients, and payments with **role-based access** for **Admin** and **Client** users.
 
-**URL**: https://lovable.dev/projects/8d2a0ef3-6ca9-404c-b50c-6d6d9b0099a4
+The system ensures **transparent project progress tracking**, **secure payments**, **invoice management**, and **automatic notifications** for all important actions.
 
-## How can I edit this code?
+---
 
-There are several ways of editing your application.
+## 🌐 Live URL
 
-**Use Lovable**
+👉 https://projec-traking-system.vercel.app
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/8d2a0ef3-6ca9-404c-b50c-6d6d9b0099a4) and start prompting.
+---
 
-Changes made via Lovable will be committed automatically to this repo.
+## 🚀 Features
 
-**Use your preferred IDE**
+### 🛠 Admin Panel
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- Create and manage **Projects / Tasks**
+- Create and manage **Clients**
+- Create **Client login accounts**
+- Assign projects to clients
+- Create and manage **Payments**
+- Track payment status (**Pending / Received**)
+- View overall project progress
+- Receive notifications for all major actions
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+---
 
-Follow these steps:
+### 👤 Client Panel
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+- Secure client login
+- View assigned projects and tasks
+- Track project progress in real time
+- Make online payments
+- View and download invoices
+- Receive notifications for task and payment updates
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+---
 
-# Step 3: Install the necessary dependencies.
-npm i
+### 🔔 Notifications
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+- In-app notification system
+- Notifications sent to **Admin** and **Client**
+- Triggered on:
+  - Task / project creation or update
+  - Client account creation
+  - Payment creation or status update
+- User-based notification preferences supported
 
-**Edit a file directly in GitHub**
+---
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## 🔐 Roles & Access Control
 
-**Use GitHub Codespaces**
+### Admin
+- Full system access
+- Manage tasks, clients, and payments
+- Create and manage client accounts
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Client
+- Limited access
+- View only assigned projects
+- Make payments and view invoices
+- Receive project-related notifications
 
-## What technologies are used for this project?
+---
 
-This project is built with:
+## 🧰 Tech Stack
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- **Frontend:** Vite + React
+- **Styling:** Tailwind CSS
+- **Backend & Database:** Supabase (Auth + Database)
+- **Payments:** Integrated Payment Gateway
+- **File Storage:** Cloudinary + Supabase storage
 
-## How can I deploy this project?
+---
 
-Simply open [Lovable](https://lovable.dev/projects/8d2a0ef3-6ca9-404c-b50c-6d6d9b0099a4) and click on Share -> Publish.
+## 🔑 Authentication & Security
 
-## Can I connect a custom domain to my Lovable project?
+- Supabase Authentication
+- Role-based access control
+- Protected routes
+- Secure client-level data isolation
 
-Yes, you can!
+---
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## 💳 Payments & Invoices
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+- Secure online payments
+- Payment status tracking
+- Invoice generation for clients
+- Automatic admin notifications on payment updates
+
+---
+
+## 🏢 Developed For
+
+Anthem Infotech Pvt. Ltd.
