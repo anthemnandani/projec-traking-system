@@ -19,44 +19,52 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchNotifications = async () => {
-    // console.log("fetching notification");
-    if (!user?.id) return;
+const fetchNotifications = async () => {
+  if (!user?.id) return;
+  setLoading(true);
 
-    setLoading(true);
+  try {
+    // 1️⃣ Fetch user preferences safely
+    const { data: userData } = await supabase
+      .from("users")
+      .select("notification_preferences")
+      .eq("id", user.id)
+      .single();
 
-    const { data: userData, error: userError } = await supabase.from("users").select("notification_preferences").eq("id", user.id);
-    const preferences=userData[0].notification_preferences;
-    // console.log(" preferences", preferences);
+    const preferences = userData?.notification_preferences || {
+      app_tasks: true,
+      app_clients: true,
+      app_payments: true,
+    };
+
+    // 2️⃣ Base query
     let query = supabase
-    .from("notifications")
-    .select("*")
-    .order("created_at", { ascending: false });
-    
-    if (user.role === "admin") {
-      query = query.eq("receiver_role", "admin");
-    } else if (user.role === "client") {
+      .from("notifications")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (user.role === "admin") query = query.eq("receiver_role", "admin");
+    else if (user.role === "client")
       query = query.eq("receiver_role", "client").eq("receiver_id", user.clientId);
-    }
 
-      // 🔍 Filter based on preferences
-  const allowedTypes = [];
-  if (preferences.app_tasks) allowedTypes.push("task");
-  if (preferences.app_clients) allowedTypes.push("client");
-  if (preferences.app_payments) allowedTypes.push("payment");
+    // 3️⃣ Apply type filter only if preferences exist
+    const allowedTypes = [];
+    if (preferences?.app_tasks) allowedTypes.push("task");
+    if (preferences?.app_clients) allowedTypes.push("client");
+    if (preferences?.app_payments) allowedTypes.push("payment");
 
-  if (allowedTypes.length > 0) {
-    query = query.in("type", allowedTypes);
-  } else {
-    setNotifications([]);
-    setLoading(false);
-    return;
-  }
+    if (allowedTypes.length > 0) query = query.in("type", allowedTypes);
 
     const { data, error } = await query;
-    if (!error) setNotifications(data ?? []);
+    if (error) console.error("Fetch notifications error:", error);
+    setNotifications(data ?? []);
+  } catch (err) {
+    console.error("Fetch notifications exception:", err);
+    setNotifications([]);
+  } finally {
     setLoading(false);
-  };
+  }
+};
 
   const markAsRead = async (id: string) => {
     const { error } = await supabase
